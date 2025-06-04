@@ -5,6 +5,7 @@ from course.models import Course
 from admission.models import Admission
 from event.models import Event
 from scholarship.models import Scholarship
+from information.models import Information
 
 class SchoolFilter(django_filters.FilterSet):
     district = django_filters.CharFilter(field_name="district__slug", lookup_expr='iexact')
@@ -61,3 +62,10 @@ class ScholarshipFilter(django_filters.FilterSet):
     class Meta:
         model = Scholarship
         fields = ['level', 'university', 'course']
+
+class InformationFilter(django_filters.FilterSet):
+    category = django_filters.CharFilter(field_name="category__slug", lookup_expr="iexact", required=False)
+
+    class Meta:
+        model = Information
+        fields = ['category']

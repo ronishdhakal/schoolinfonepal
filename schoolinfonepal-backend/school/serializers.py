@@ -64,7 +64,7 @@ class SchoolSerializer(serializers.ModelSerializer):
     social_media = SchoolSocialMediaSerializer(many=True, required=False)
     faqs = SchoolFAQSerializer(many=True, required=False)
     messages = SchoolMessageSerializer(many=True, required=False)
-    school_courses = SchoolCourseSerializer(many=True, required=False, source='school_courses')
+    school_courses = SchoolCourseSerializer(many=True, required=False)  # ✅ fixed line
 
     district = serializers.SlugRelatedField(
         slug_field='slug', queryset=District.objects.all(), required=False, allow_null=True
@@ -81,6 +81,7 @@ class SchoolSerializer(serializers.ModelSerializer):
     universities = serializers.SlugRelatedField(
         many=True, slug_field='slug', queryset=University.objects.all(), required=False
     )
+
 
     class Meta:
         model = School
