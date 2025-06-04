@@ -1,16 +1,16 @@
 from django.urls import path
 from .views import (
-    UniversityListView,
-    UniversityCreateView,
-    UniversityDetailView,
-    UniversityUpdateView,
-    UniversityDeleteView,
+    university_list,
+    university_detail,
+    university_create,
+    university_update,
+    university_delete
 )
 
 urlpatterns = [
-    path('', UniversityListView.as_view(), name='university-list'),                              # /api/universities/
-    path('create/', UniversityCreateView.as_view(), name='university-create'),                   # /api/universities/create/
-    path('<slug:slug>/', UniversityDetailView.as_view(), name='university-detail'),              # /api/universities/<slug>/
-    path('<slug:slug>/update/', UniversityUpdateView.as_view(), name='university-update'),       # /api/universities/<slug>/update/
-    path('<slug:slug>/delete/', UniversityDeleteView.as_view(), name='university-delete'),       # /api/universities/<slug>/delete/
+    path('', university_list, name='university-list'),
+    path('create/', university_create, name='university-create'),
+    path('<slug:slug>/', university_detail, name='university-detail'),
+    path('<slug:slug>/update/', university_update, name='university-update'),
+    path('<slug:slug>/delete/', university_delete, name='university-delete'),
 ]

@@ -1,43 +1,73 @@
-from rest_framework import generics, permissions
-from rest_framework.filters import SearchFilter, OrderingFilter
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from django.utils.text import slugify
 
 from .models import University
 from .serializers import UniversitySerializer
-from core.filters import UniversityFilter
 
-# Public: List all universities with filter + search
-class UniversityListView(generics.ListAPIView):
-    queryset = University.objects.all().order_by('priority', 'name')
-    serializer_class = UniversitySerializer
-    permission_classes = [permissions.AllowAny]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_class = UniversityFilter
-    search_fields = ['name']
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def university_list(request):
+    universities = University.objects.all().order_by('priority', 'name')
+    serializer = UniversitySerializer(universities, many=True)
+    return Response(serializer.data)
 
-# Admin: Create a new university
-class UniversityCreateView(generics.CreateAPIView):
-    queryset = University.objects.all()
-    serializer_class = UniversitySerializer
-    permission_classes = [permissions.IsAdminUser]
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def university_detail(request, slug):
+    university = get_object_or_404(University, slug=slug)
+    serializer = UniversitySerializer(university)
+    return Response(serializer.data)
 
-# Public: Get detail for a university by slug
-class UniversityDetailView(generics.RetrieveAPIView):
-    queryset = University.objects.all()
-    serializer_class = UniversitySerializer
-    permission_classes = [permissions.AllowAny]
-    lookup_field = 'slug'
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+@parser_classes([MultiPartParser, FormParser])
+def university_create(request):
+    data = request.data.dict()
+    files = request.FILES
 
-# Admin: Update university (by slug)
-class UniversityUpdateView(generics.UpdateAPIView):
-    queryset = University.objects.all()
-    serializer_class = UniversitySerializer
-    permission_classes = [permissions.IsAdminUser]
-    lookup_field = 'slug'
+    # Add file fields if present
+    if "logo" in files:
+        data["logo"] = files["logo"]
+    if "cover_photo" in files:
+        data["cover_photo"] = files["cover_photo"]
+    if "og_image" in files:
+        data["og_image"] = files["og_image"]
 
-# Admin: Delete university (by slug)
-class UniversityDeleteView(generics.DestroyAPIView):
-    queryset = University.objects.all()
-    serializer_class = UniversitySerializer
-    permission_classes = [permissions.IsAdminUser]
-    lookup_field = 'slug'
+    serializer = UniversitySerializer(data=data)
+    if serializer.is_valid():
+        university = serializer.save()
+        return Response(UniversitySerializer(university).data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(["PATCH"])
+@permission_classes([IsAdminUser])
+@parser_classes([MultiPartParser, FormParser])
+def university_update(request, slug):
+    university = get_object_or_404(University, slug=slug)
+    data = request.data.dict()
+    files = request.FILES
+
+    if "logo" in files:
+        data["logo"] = files["logo"]
+    if "cover_photo" in files:
+        data["cover_photo"] = files["cover_photo"]
+    if "og_image" in files:
+        data["og_image"] = files["og_image"]
+
+    serializer = UniversitySerializer(university, data=data, partial=True)
+    if serializer.is_valid():
+        university = serializer.save()
+        return Response(UniversitySerializer(university).data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def university_delete(request, slug):
+    university = get_object_or_404(University, slug=slug)
+    university.delete()
+    return Response({"message": "University deleted successfully"}, status=status.HTTP_204_NO_CONTENT)

@@ -2,16 +2,16 @@ from rest_framework import serializers
 from .models import Event
 from school.models import School
 from university.models import University
+from django.utils.text import slugify
 
 class EventSerializer(serializers.ModelSerializer):
-    organizer_school = serializers.SlugRelatedField(
-        slug_field='slug',
+    slug = serializers.CharField(required=False, allow_blank=True)
+    organizer_school = serializers.PrimaryKeyRelatedField(
         queryset=School.objects.all(),
         required=False,
         allow_null=True
     )
-    organizer_university = serializers.SlugRelatedField(
-        slug_field='slug',
+    organizer_university = serializers.PrimaryKeyRelatedField(
         queryset=University.objects.all(),
         required=False,
         allow_null=True
@@ -27,7 +27,7 @@ class EventSerializer(serializers.ModelSerializer):
             'registration_type', 'registration_price', 'registration_link',
             'featured', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['slug', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
     def validate(self, attrs):
         if not (
@@ -36,6 +36,26 @@ class EventSerializer(serializers.ModelSerializer):
             attrs.get('organizer_custom')
         ):
             raise serializers.ValidationError("Please specify at least one organizer: school, university, or custom.")
+
         if attrs.get('registration_type') == 'paid' and not attrs.get('registration_price'):
             raise serializers.ValidationError("Registration price is required for paid events.")
+
         return attrs
+
+    def create(self, validated_data):
+        requested_slug = validated_data.get("slug")
+        base_slug = slugify(requested_slug or validated_data.get("title", "event"))
+        slug = base_slug
+        counter = 1
+        while Event.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        validated_data["slug"] = slug
+        return Event.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop("slug", None)  # Prevent slug change
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance

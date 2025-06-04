@@ -1,3 +1,4 @@
+import json
 from rest_framework import serializers
 from .models import University, UniversityPhone, UniversityEmail, UniversityGallery
 from type.models import Type
@@ -36,15 +37,27 @@ class UniversitySerializer(serializers.ModelSerializer):
             'salient_features', 'about', 'priority',
             'meta_title', 'meta_description',
             'og_image', 'og_title', 'og_description',
-            'is_verified', 'foreign_affiliated',   # <--- Added field here
+            'is_verified', 'foreign_affiliated',
             'created_at', 'updated_at', 'status',
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at', 'is_verified']
 
+    def safe_json_loads(self, raw, fallback):
+        if not raw:
+            return fallback
+        try:
+            return json.loads(raw) if isinstance(raw, str) else raw
+        except:
+            return fallback
+
     def create(self, validated_data):
-        phones_data = validated_data.pop('phones', [])
-        emails_data = validated_data.pop('emails', [])
-        gallery_data = validated_data.pop('gallery', [])
+        request = self.context.get("request")
+        raw_data = request.data if request else {}
+
+        phones_data = self.safe_json_loads(raw_data.get("phones"), [])
+        emails_data = self.safe_json_loads(raw_data.get("emails"), [])
+        gallery_data = self.safe_json_loads(raw_data.get("gallery"), [])
+
         university = University.objects.create(**validated_data)
 
         for phone in phones_data:
@@ -53,30 +66,34 @@ class UniversitySerializer(serializers.ModelSerializer):
             UniversityEmail.objects.create(university=university, **email)
         for image in gallery_data:
             UniversityGallery.objects.create(university=university, **image)
+
         return university
 
     def update(self, instance, validated_data):
-        phones_data = validated_data.pop('phones', [])
-        emails_data = validated_data.pop('emails', [])
-        gallery_data = validated_data.pop('gallery', [])
+        request = self.context.get("request")
+        raw_data = request.data if request else {}
 
-        # Update core fields
+        phones_data = self.safe_json_loads(raw_data.get("phones"), [])
+        emails_data = self.safe_json_loads(raw_data.get("emails"), [])
+        gallery_data = self.safe_json_loads(raw_data.get("gallery"), [])
+
+        # Core updates
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Phones
-        if phones_data:
+        # Replace related sets only if provided
+        if phones_data is not None:
             instance.phones.all().delete()
             for phone in phones_data:
                 UniversityPhone.objects.create(university=instance, **phone)
-        # Emails
-        if emails_data:
+
+        if emails_data is not None:
             instance.emails.all().delete()
             for email in emails_data:
                 UniversityEmail.objects.create(university=instance, **email)
-        # Gallery
-        if gallery_data:
+
+        if gallery_data is not None:
             instance.gallery.all().delete()
             for image in gallery_data:
                 UniversityGallery.objects.create(university=instance, **image)

@@ -1,16 +1,10 @@
 from django.urls import path
-from .views import (
-    TypeListView,
-    TypeCreateView,
-    TypeDetailView,
-    TypeUpdateView,
-    TypeDeleteView,
-)
+from .views import type_list, type_detail, type_create, type_update, type_delete
 
 urlpatterns = [
-    path('', TypeListView.as_view(), name='type-list'),                          # /api/types/
-    path('create/', TypeCreateView.as_view(), name='type-create'),               # /api/types/create/
-    path('<slug:slug>/', TypeDetailView.as_view(), name='type-detail'),          # /api/types/<slug>/
-    path('<slug:slug>/update/', TypeUpdateView.as_view(), name='type-update'),   # /api/types/<slug>/update/
-    path('<slug:slug>/delete/', TypeDeleteView.as_view(), name='type-delete'),   # /api/types/<slug>/delete/
+    path('', type_list, name='type-list'),
+    path('create/', type_create, name='type-create'),
+    path('<slug:slug>/', type_detail, name='type-detail'),
+    path('<slug:slug>/update/', type_update, name='type-update'),
+    path('<slug:slug>/delete/', type_delete, name='type-delete'),
 ]

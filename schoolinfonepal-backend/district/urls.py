@@ -1,16 +1,16 @@
 from django.urls import path
 from .views import (
     DistrictListView,
-    DistrictCreateView,
     DistrictDetailView,
-    DistrictUpdateView,
-    DistrictDeleteView,
+    create_district,
+    update_district,
+    delete_district,
 )
 
 urlpatterns = [
-    path('', DistrictListView.as_view(), name='district-list'),                           # /api/districts/
-    path('create/', DistrictCreateView.as_view(), name='district-create'),                # /api/districts/create/
-    path('<slug:slug>/', DistrictDetailView.as_view(), name='district-detail'),           # /api/districts/<slug>/
-    path('<slug:slug>/update/', DistrictUpdateView.as_view(), name='district-update'),    # /api/districts/<slug>/update/
-    path('<slug:slug>/delete/', DistrictDeleteView.as_view(), name='district-delete'),    # /api/districts/<slug>/delete/
+    path('', DistrictListView.as_view(), name='district-list'),
+    path('create/', create_district, name='district-create'),
+    path('<slug:slug>/', DistrictDetailView.as_view(), name='district-detail'),
+    path('<slug:slug>/update/', update_district, name='district-update'),
+    path('<slug:slug>/delete/', delete_district, name='district-delete'),
 ]
