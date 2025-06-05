@@ -70,3 +70,8 @@ def delete_facility(request, slug):
         facility.icon.delete(save=False)
     facility.delete()
     return Response({"message": "Facility deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def facility_dropdown(request):
+    facilities = Facility.objects.all().values('id', 'name')
+    return Response(facilities)

@@ -46,3 +46,8 @@ def type_delete(request, slug):
     type_obj = get_object_or_404(Type, slug=slug)
     type_obj.delete()
     return Response({"message": "Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def type_dropdown(request):
+    types = Type.objects.all().values('id', 'name')
+    return Response(types)

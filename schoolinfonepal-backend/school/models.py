@@ -7,6 +7,8 @@ from facility.models import Facility
 from university.models import University
 from course.models import Course
 from authentication.models import User
+from django.utils import timezone
+
 
 class School(models.Model):
     user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='school')
@@ -30,6 +32,8 @@ class School(models.Model):
     salient_feature = models.TextField(blank=True)
     scholarship = models.TextField(blank=True)
     about_college = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
 
     def save(self, *args, **kwargs):
         if not self.slug:

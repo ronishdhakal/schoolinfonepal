@@ -101,3 +101,8 @@ class SchoolOwnDetailView(RetrieveAPIView):
 class SchoolOwnUpdateView(SchoolOwnDetailView):
     def patch(self, request, *args, **kwargs):
         return update_school(request, self.get_object().slug)
+
+@api_view(['GET'])
+def school_dropdown(request):
+    schools = School.objects.all().values('id', 'title')
+    return Response(schools)

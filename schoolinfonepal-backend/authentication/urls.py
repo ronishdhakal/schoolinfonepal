@@ -7,5 +7,5 @@ urlpatterns = [
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('logout/', TokenBlacklistView.as_view(), name='logout'),  # Blacklist token for logout
+    path('logout/', TokenBlacklistView.as_view(), name='logout'),
 ]

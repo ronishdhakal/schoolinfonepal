@@ -7,11 +7,14 @@ from .views import (
     delete_school,
     SchoolOwnDetailView,
     SchoolOwnUpdateView,
+    school_dropdown,
 )
 
 urlpatterns = [
     path('', SchoolListView.as_view(), name='school-list'),                         # /api/schools/
     path('create/', create_school, name='school-create'),                           # /api/schools/create/
+    path("dropdown/", school_dropdown),
+
     path('<slug:slug>/', SchoolDetailView.as_view(), name='school-detail'),         # /api/schools/<slug>/
     path('<slug:slug>/update/', update_school, name='school-update'),               # /api/schools/<slug>/update/
     path('<slug:slug>/delete/', delete_school, name='school-delete'),               # /api/schools/<slug>/delete/

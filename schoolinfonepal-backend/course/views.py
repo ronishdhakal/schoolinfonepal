@@ -111,3 +111,10 @@ def delete_course(request, slug):
         attachment.delete()
     course.delete()
     return Response({"message": "Course deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def course_dropdown(request):
+    courses = Course.objects.all().values('id', 'name')
+    return Response(courses)
+

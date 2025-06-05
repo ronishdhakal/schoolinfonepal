@@ -54,3 +54,8 @@ def delete_level(request, slug):
     level = get_object_or_404(Level, slug=slug)
     level.delete()
     return Response({"message": "Level deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def level_dropdown(request):
+    levels = Level.objects.all().values('id', 'title')
+    return Response(levels)

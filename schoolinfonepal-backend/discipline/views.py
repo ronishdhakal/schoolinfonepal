@@ -54,3 +54,8 @@ def delete_discipline(request, slug):
     discipline = get_object_or_404(Discipline, slug=slug)
     discipline.delete()
     return Response({"message": "Discipline deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def discipline_dropdown(request):
+    disciplines = Discipline.objects.all().values('id', 'title')
+    return Response(disciplines)

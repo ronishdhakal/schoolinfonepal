@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
@@ -11,7 +12,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'password', 'password2', 'role')
-        extra_kwargs = {'role': {'read_only': True}}  # By default, new users will be 'school'
+        extra_kwargs = {'role': {'read_only': True}}
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -25,10 +26,39 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
         )
-        # Default role is 'school'
         return user
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'role')
+
+# ✅ Login with email serializer
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = get_user_model().EMAIL_FIELD  # email
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid email or password")
+
+        if not user.check_password(password):
+            raise serializers.ValidationError("Invalid email or password")
+
+        if not user.is_active:
+            raise serializers.ValidationError("User account is disabled.")
+
+        refresh = self.get_token(user)
+
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "role": user.role,
+            "username": user.username,
+            "email": user.email,
+            "id": user.id,
+        }

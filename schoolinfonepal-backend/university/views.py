@@ -71,3 +71,8 @@ def university_delete(request, slug):
     university = get_object_or_404(University, slug=slug)
     university.delete()
     return Response({"message": "University deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def university_dropdown(request):
+    universities = University.objects.all().values('id', 'name')
+    return Response(universities)
