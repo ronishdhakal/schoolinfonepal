@@ -7,9 +7,10 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
+from django.utils.text import slugify
 
-from .models import Information
-from .serializers import InformationSerializer
+from .models import Information, InformationCategory
+from .serializers import InformationSerializer, InformationCategorySerializer
 from core.filters import InformationFilter
 import json
 
@@ -22,6 +23,10 @@ def safe_json_loads(val):
         return json.loads(val)
     except Exception:
         return []
+
+# ========================
+# 📰 Information Views
+# ========================
 
 # ✅ Public List
 class InformationListView(ListAPIView):
@@ -97,3 +102,80 @@ def delete_information(request, slug):
         info.featured_image.delete(save=False)
     info.delete()
     return Response({"message": "Information deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+# ========================
+# 📂 Information Category Views
+# ========================
+
+# ✅ Public Category List
+class InformationCategoryListView(ListAPIView):
+    queryset = InformationCategory.objects.all().order_by('name')
+    serializer_class = InformationCategorySerializer
+    permission_classes = [AllowAny]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['name']
+
+# ✅ Public Category Detail
+class InformationCategoryDetailView(RetrieveAPIView):
+    queryset = InformationCategory.objects.all()
+    serializer_class = InformationCategorySerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'slug'
+
+# ✅ Admin Create Category
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def create_information_category(request):
+    data = request.data.copy()
+    
+    # Auto-generate slug if not provided
+    if not data.get("slug") and data.get("name"):
+        data["slug"] = slugify(data["name"])
+
+    serializer = InformationCategorySerializer(data=data)
+    if serializer.is_valid():
+        category = serializer.save()
+        return Response(InformationCategorySerializer(category).data, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ✅ Admin Update Category
+@api_view(["PATCH"])
+@permission_classes([IsAdminUser])
+def update_information_category(request, slug):
+    category = get_object_or_404(InformationCategory, slug=slug)
+    data = request.data.copy()
+    
+    # Auto-generate slug if name is updated but slug is not provided
+    if data.get("name") and not data.get("slug"):
+        data["slug"] = slugify(data["name"])
+
+    serializer = InformationCategorySerializer(category, data=data, partial=True)
+    if serializer.is_valid():
+        category = serializer.save()
+        return Response(InformationCategorySerializer(category).data, status=status.HTTP_200_OK)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ✅ Admin Delete Category
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_information_category(request, slug):
+    category = get_object_or_404(InformationCategory, slug=slug)
+    
+    # Check if category has associated information
+    if category.contents.exists():
+        return Response(
+            {"error": "Cannot delete category with associated information. Please reassign or delete the information first."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    category.delete()
+    return Response({"message": "Category deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+# ✅ Dropdown API for Categories
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def information_category_dropdown(request):
+    categories = InformationCategory.objects.all().values('id', 'name')
+    return Response(categories)

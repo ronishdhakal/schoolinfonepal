@@ -6,6 +6,28 @@ from course.models import Course
 from school.models import School
 from django.utils.text import slugify
 
+class InformationCategorySerializer(serializers.ModelSerializer):
+    slug = serializers.CharField(required=False, allow_blank=True)
+
+    class Meta:
+        model = InformationCategory
+        fields = ['id', 'name', 'slug']
+        read_only_fields = []
+
+    def create(self, validated_data):
+        if not validated_data.get("slug") and validated_data.get("name"):
+            validated_data["slug"] = slugify(validated_data["name"])
+        return InformationCategory.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        if validated_data.get("name") and not validated_data.get("slug"):
+            validated_data["slug"] = slugify(validated_data["name"])
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
 class InformationSerializer(serializers.ModelSerializer):
     slug = serializers.CharField(required=False, allow_blank=True)
     category = serializers.PrimaryKeyRelatedField(queryset=InformationCategory.objects.all())

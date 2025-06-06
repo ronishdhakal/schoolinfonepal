@@ -421,3 +421,222 @@ export const deleteDiscipline = async (slug) => {
   }
   return res.json()
 }
+
+// ========================
+// 📅 Event APIs
+// ========================
+
+export const fetchEvents = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/events/`)
+  Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]))
+  const res = await fetch(url)
+  return res.json()
+}
+
+export const fetchEventBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE_URL}/events/${slug}/`)
+  return res.json()
+}
+
+// ---- CREATE EVENT ----
+export const createEvent = async (formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/events/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create failed")
+  }
+  return res.json()
+}
+
+// ---- UPDATE EVENT ----
+export const updateEvent = async (slug, formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/events/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+// ---- DELETE EVENT ----
+export const deleteEvent = async (slug) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/events/${slug}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    throw new Error("Delete failed")
+  }
+  return res.json()
+}
+
+// ========================
+// 📰 Information APIs
+// ========================
+
+export const fetchInformation = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/information/`)
+  Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]))
+  const res = await fetch(url)
+  return res.json()
+}
+
+export const fetchInformationBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE_URL}/information/${slug}/`)
+  return res.json()
+}
+
+// ---- CREATE INFORMATION ----
+export const createInformation = async (formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/information/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create failed")
+  }
+  return res.json()
+}
+
+// ---- UPDATE INFORMATION ----
+export const updateInformation = async (slug, formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/information/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+// ---- DELETE INFORMATION ----
+export const deleteInformation = async (slug) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/information/${slug}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    throw new Error("Delete failed")
+  }
+  return res.json()
+}
+
+// ========================
+// 📂 Information Categories APIs
+// ========================
+
+export const fetchInformationCategories = async () => {
+  const res = await fetch(`${API_BASE_URL}/information/categories/dropdown/`)
+  if (!res.ok) {
+    throw new Error("Failed to fetch information categories")
+  }
+  return res.json()
+}
+
+export const fetchInformationCategoryBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE_URL}/information/categories/${slug}/`)
+  if (!res.ok) {
+    throw new Error("Failed to fetch information category")
+  }
+  return res.json()
+}
+
+export const createInformationCategory = async (categoryData) => {
+  const headers = {
+    ...(await getAuthHeaders()),
+    "Content-Type": "application/json",
+  }
+
+  const res = await fetch(`${API_BASE_URL}/information/categories/create/`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(categoryData),
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create category failed")
+  }
+  return res.json()
+}
+
+export const updateInformationCategory = async (slug, categoryData) => {
+  const headers = {
+    ...(await getAuthHeaders()),
+    "Content-Type": "application/json",
+  }
+
+  const res = await fetch(`${API_BASE_URL}/information/categories/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(categoryData),
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update category failed")
+  }
+  return res.json()
+}
+
+export const deleteInformationCategory = async (slug) => {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE_URL}/information/categories/${slug}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    throw new Error("Delete category failed")
+  }
+  return res.json()
+}
