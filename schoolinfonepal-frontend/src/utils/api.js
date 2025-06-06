@@ -1,6 +1,7 @@
-import axios from "axios";
+import jwt_decode from "jwt-decode";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
 // ========================
 // 🔐 Authentication
@@ -20,117 +21,128 @@ export async function loginSuperadmin(email, password) {
     throw new Error(error?.detail || "Login failed");
   }
 
-  return res.json(); // Should return { access, refresh, role, ... }
+  return res.json(); // { access, refresh, role, ... }
 }
 
-export function saveAuthToken(token) {
+export function saveAuthToken(access, refresh) {
   if (typeof window !== "undefined") {
-    localStorage.setItem("access", token); // ✅ consistent key
+    localStorage.setItem("access", access);
+    localStorage.setItem("refresh", refresh);
   }
 }
 
 export function getAuthToken() {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("access"); // ✅ fixed to match
+    return localStorage.getItem("access");
   }
   return null;
 }
 
+// ✅ Simple: only gets the current token
 export function getAuthHeaders() {
   const token = getAuthToken();
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export function logout() {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("access");
-    window.location.href = "/login";
-  }
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  window.location.href = "/login";
 }
 
 // ========================
 // 📍 Dropdown Fetchers (Public)
 // ========================
 
-export const fetchDistrictsDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/districts/dropdown/`);
-  return res.data;
-};
+const get = async (url) =>
+  (await fetch(`${API_BASE_URL}${url}`)).json();
 
-export const fetchUniversitiesDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/universities/dropdown/`);
-  return res.data;
-};
-
-export const fetchLevelsDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/levels/dropdown/`);
-  return res.data;
-};
-
-export const fetchTypesDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/types/dropdown/`);
-  return res.data;
-};
-
-export const fetchCoursesDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/courses/dropdown/`);
-  return res.data;
-};
-
-export const fetchFacilitiesDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/facilities/dropdown/`);
-  return res.data;
-};
-
-export const fetchDisciplinesDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/disciplines/dropdown/`);
-  return res.data;
-};
-
-export const fetchSchoolsDropdown = async () => {
-  const res = await axios.get(`${API_BASE_URL}/schools/dropdown/`);
-  return res.data;
-};
+export const fetchDistrictsDropdown = () => get("/districts/dropdown/");
+export const fetchUniversitiesDropdown = () => get("/universities/dropdown/");
+export const fetchLevelsDropdown = () => get("/levels/dropdown/");
+export const fetchTypesDropdown = () => get("/types/dropdown/");
+export const fetchCoursesDropdown = () => get("/courses/dropdown/");
+export const fetchFacilitiesDropdown = () => get("/facilities/dropdown/");
+export const fetchDisciplinesDropdown = () => get("/disciplines/dropdown/");
+export const fetchSchoolsDropdown = () => get("/schools/dropdown/");
 
 // ========================
 // 🏫 School APIs
 // ========================
 
+// Helper: async headers for FormData requests (no Content-Type)
+async function getTokenHeaders() {
+  // If getAuthHeaders was NOT async, this would still work.
+  // If you ever make it async (e.g. auto-refresh), this is safe!
+  const headers = await getAuthHeaders();
+  if (headers["Content-Type"]) delete headers["Content-Type"];
+  return headers;
+}
+
 export const fetchSchools = async (params = {}) => {
-  const res = await axios.get(`${API_BASE_URL}/schools/`, { params });
-  return res.data;
+  const url = new URL(`${API_BASE_URL}/schools/`);
+  Object.keys(params).forEach((key) =>
+    url.searchParams.append(key, params[key])
+  );
+  const res = await fetch(url);
+  return res.json();
 };
 
 export const fetchSchoolBySlug = async (slug) => {
-  const res = await axios.get(`${API_BASE_URL}/schools/${slug}/`);
-  return res.data;
+  const res = await fetch(`${API_BASE_URL}/schools/${slug}/`);
+  return res.json();
 };
 
+// ---- CREATE SCHOOL ----
 export const createSchool = async (formData) => {
-  const res = await axios.post(`${API_BASE_URL}/schools/create/`, formData, {
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "multipart/form-data",
-    },
+  const headers = await getTokenHeaders();
+  const res = await fetch(`${API_BASE_URL}/schools/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
   });
-  return res.data;
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout();
+      throw new Error("Unauthorized");
+    }
+    const error = await res.json();
+    throw new Error(error?.detail || "Create failed");
+  }
+  return res.json();
 };
 
+// ---- UPDATE SCHOOL ----
 export const updateSchool = async (slug, formData) => {
-  const res = await axios.patch(`${API_BASE_URL}/schools/${slug}/update/`, formData, {
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "multipart/form-data",
-    },
+  const headers = await getTokenHeaders();
+  const res = await fetch(`${API_BASE_URL}/schools/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
   });
-  return res.data;
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout();
+      throw new Error("Unauthorized");
+    }
+    const error = await res.json();
+    throw new Error(error?.detail || "Update failed");
+  }
+  return res.json();
 };
 
+// ---- DELETE SCHOOL ----
 export const deleteSchool = async (slug) => {
-  const res = await axios.delete(`${API_BASE_URL}/schools/delete/${slug}/`, {
-    headers: getAuthHeaders(),
+  const headers = await getTokenHeaders();
+  const res = await fetch(`${API_BASE_URL}/schools/delete/${slug}/`, {
+    method: "DELETE",
+    headers,
   });
-  return res.data;
+
+  if (!res.ok) {
+    throw new Error("Delete failed");
+  }
+  return res.json();
 };

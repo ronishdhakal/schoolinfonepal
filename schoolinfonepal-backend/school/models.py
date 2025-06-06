@@ -9,14 +9,15 @@ from course.models import Course
 from authentication.models import User
 from django.utils import timezone
 
-
 class School(models.Model):
-    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='school')
+    user = models.OneToOneField(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='school'
+    )
     name = models.CharField(max_length=200, unique=True)
     slug = models.SlugField(max_length=210, unique=True, blank=True)
     logo = models.ImageField(upload_to='school/logos/', blank=True, null=True)
     cover_photo = models.ImageField(upload_to='school/covers/', blank=True, null=True)
-    address = models.CharField(max_length=255)
+    address = models.CharField(max_length=255, blank=True)
     established_date = models.DateField(blank=True, null=True)
     verification = models.BooleanField(default=False)
     featured = models.BooleanField(default=False)
@@ -45,21 +46,21 @@ class School(models.Model):
 
 class SchoolPhone(models.Model):
     school = models.ForeignKey(School, related_name='phones', on_delete=models.CASCADE)
-    phone = models.CharField(max_length=20)
+    phone = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
         return f"{self.school.name} - {self.phone}"
 
 class SchoolEmail(models.Model):
     school = models.ForeignKey(School, related_name='emails', on_delete=models.CASCADE)
-    email = models.EmailField()
+    email = models.EmailField(blank=True)
 
     def __str__(self):
         return f"{self.school.name} - {self.email}"
 
 class SchoolGallery(models.Model):
     school = models.ForeignKey(School, related_name='gallery', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='school/gallery/')
+    image = models.ImageField(upload_to='school/gallery/', blank=True, null=True)
     caption = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
@@ -67,7 +68,7 @@ class SchoolGallery(models.Model):
 
 class SchoolBrochure(models.Model):
     school = models.ForeignKey(School, related_name='brochures', on_delete=models.CASCADE)
-    file = models.FileField(upload_to='school/brochures/')
+    file = models.FileField(upload_to='school/brochures/', blank=True, null=True)
     description = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
@@ -75,16 +76,16 @@ class SchoolBrochure(models.Model):
 
 class SchoolSocialMedia(models.Model):
     school = models.ForeignKey(School, related_name='social_media', on_delete=models.CASCADE)
-    platform = models.CharField(max_length=50)
-    url = models.URLField(max_length=255)
+    platform = models.CharField(max_length=50, blank=True)
+    url = models.URLField(max_length=255, blank=True)
 
     def __str__(self):
         return f"{self.school.name} {self.platform}"
 
 class SchoolFAQ(models.Model):
     school = models.ForeignKey(School, related_name='faqs', on_delete=models.CASCADE)
-    question = models.CharField(max_length=255)
-    answer = models.TextField()
+    question = models.CharField(max_length=255, blank=True)
+    answer = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.school.name} FAQ"
@@ -92,15 +93,14 @@ class SchoolFAQ(models.Model):
 class SchoolMessage(models.Model):
     school = models.ForeignKey(School, related_name='messages', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='school/messages/', blank=True, null=True)
-    title = models.CharField(max_length=200)
-    message = models.TextField()
-    name = models.CharField(max_length=100)
-    designation = models.CharField(max_length=100)
+    title = models.CharField(max_length=200, blank=True)
+    message = models.TextField(blank=True)
+    name = models.CharField(max_length=100, blank=True)
+    designation = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
         return f"{self.school.name} - {self.title}"
 
-# Through model for School-Course with extra fields
 class SchoolCourse(models.Model):
     school = models.ForeignKey(School, related_name='school_courses', on_delete=models.CASCADE)
     course = models.ForeignKey(Course, related_name='school_courses', on_delete=models.CASCADE)

@@ -15,8 +15,9 @@ const SchoolContact = ({ formData, setFormData }) => {
   };
 
   const handlePhoneChange = (index, value) => {
-    const updated = [...(formData.phones || [])];
-    updated[index].phone = value;
+    const updated = (formData.phones || []).map((item, i) =>
+      i === index ? { ...item, phone: value } : item
+    );
     setFormData((prev) => ({ ...prev, phones: updated }));
   };
 
@@ -26,14 +27,14 @@ const SchoolContact = ({ formData, setFormData }) => {
   };
 
   const removePhone = (index) => {
-    const updated = [...formData.phones];
-    updated.splice(index, 1);
+    const updated = (formData.phones || []).filter((_, i) => i !== index);
     setFormData((prev) => ({ ...prev, phones: updated }));
   };
 
   const handleEmailChange = (index, value) => {
-    const updated = [...(formData.emails || [])];
-    updated[index].email = value;
+    const updated = (formData.emails || []).map((item, i) =>
+      i === index ? { ...item, email: value } : item
+    );
     setFormData((prev) => ({ ...prev, emails: updated }));
   };
 
@@ -43,10 +44,12 @@ const SchoolContact = ({ formData, setFormData }) => {
   };
 
   const removeEmail = (index) => {
-    const updated = [...formData.emails];
-    updated.splice(index, 1);
+    const updated = (formData.emails || []).filter((_, i) => i !== index);
     setFormData((prev) => ({ ...prev, emails: updated }));
   };
+
+  // Filter out blanks before final submit (to be used by parent!)
+  // (If you use onSubmit in parent, add this logic there as well!)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -60,7 +63,6 @@ const SchoolContact = ({ formData, setFormData }) => {
           className="input"
         />
       </div>
-
       <div>
         <label className="block font-medium">District</label>
         <select
@@ -77,7 +79,6 @@ const SchoolContact = ({ formData, setFormData }) => {
           ))}
         </select>
       </div>
-
       <div className="md:col-span-2">
         <label className="block font-medium">Google Map Link</label>
         <input
@@ -96,7 +97,7 @@ const SchoolContact = ({ formData, setFormData }) => {
           <div key={index} className="flex gap-2 mb-2">
             <input
               type="text"
-              value={item.phone}
+              value={item.phone || ""}
               onChange={(e) => handlePhoneChange(index, e.target.value)}
               className="input flex-1"
               placeholder="Enter phone"
@@ -122,7 +123,7 @@ const SchoolContact = ({ formData, setFormData }) => {
           <div key={index} className="flex gap-2 mb-2">
             <input
               type="email"
-              value={item.email}
+              value={item.email || ""}
               onChange={(e) => handleEmailChange(index, e.target.value)}
               className="input flex-1"
               placeholder="Enter email"

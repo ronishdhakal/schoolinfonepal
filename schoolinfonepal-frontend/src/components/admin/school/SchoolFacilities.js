@@ -9,16 +9,24 @@ const SchoolFacilities = ({ formData, setFormData }) => {
     fetchFacilitiesDropdown().then(setFacilityOptions);
   }, []);
 
+  if (!formData) return null;
+
+  // Defensive: Always convert IDs to string for comparison
+  const selectedSet = new Set((formData.facilities || []).map(String));
+
   const handleToggle = (facilityId) => {
-    const selected = new Set(formData.facilities || []);
-    if (selected.has(facilityId)) {
-      selected.delete(facilityId);
+    const idStr = String(facilityId);
+    let updated;
+    if (selectedSet.has(idStr)) {
+      updated = (formData.facilities || []).filter(
+        (id) => String(id) !== idStr
+      );
     } else {
-      selected.add(facilityId);
+      updated = [...(formData.facilities || []), facilityId];
     }
     setFormData((prev) => ({
       ...prev,
-      facilities: Array.from(selected),
+      facilities: updated,
     }));
   };
 
@@ -30,7 +38,7 @@ const SchoolFacilities = ({ formData, setFormData }) => {
           <label key={facility.id} className="flex items-center space-x-2">
             <input
               type="checkbox"
-              checked={(formData.facilities || []).includes(facility.id)}
+              checked={selectedSet.has(String(facility.id))}
               onChange={() => handleToggle(facility.id)}
             />
             <span>{facility.name}</span>

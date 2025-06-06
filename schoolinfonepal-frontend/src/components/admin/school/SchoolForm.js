@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-
 import {
   createSchool,
   updateSchool,
@@ -21,6 +20,37 @@ import SchoolFacilities from "./SchoolFacilities";
 import SchoolUniversity from "./SchoolUniversity";
 import SchoolLevel from "./SchoolLevel";
 
+// Utility: Extract metadata and collect files for nested arrays
+function processGallery(gallery) {
+  const metadata = [];
+  const files = {};
+  (gallery || []).forEach((item, i) => {
+    // If new upload, item.image is a File. If already uploaded, it's a URL.
+    if (item.image instanceof File) {
+      files[`gallery_${i}_image`] = item.image;
+      // Only store filename in metadata if you want, or leave empty for backend to assign
+      metadata.push({ caption: item.caption || "" });
+    } else {
+      metadata.push({ image: item.image, caption: item.caption || "" });
+    }
+  });
+  return { metadata, files };
+}
+
+// Utility: Extract metadata and collect file for message image
+function processMessages(messages) {
+  if (!messages || !messages.length) return { metadata: [], files: {} };
+  const files = {};
+  let item = messages[0];
+  let meta = { ...item };
+  if (item.image instanceof File) {
+    files["messages_0_image"] = item.image;
+    meta.image = ""; // let backend assign uploaded image
+  }
+  // Otherwise, image is already string (URL), so keep as is
+  return { metadata: [meta], files };
+}
+
 const SchoolForm = ({ slug = null, onSuccess }) => {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(!!slug);
@@ -30,7 +60,20 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     if (slug) {
       fetchSchoolBySlug(slug)
         .then((data) => {
-          setFormData(data);
+          // Defensive: always set blank arrays if missing
+          setFormData({
+            ...data,
+            phones: data.phones || [],
+            emails: data.emails || [],
+            gallery: data.gallery || [],
+            brochures: data.brochures || [],
+            social_media: data.social_media || [],
+            faqs: data.faqs || [],
+            messages: data.messages || [],
+            school_courses: data.school_courses || [],
+            facilities: data.facilities || [],
+            universities: data.universities || [],
+          });
           setLoading(false);
         })
         .catch((err) => {
@@ -43,11 +86,12 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     e.preventDefault();
     const data = new FormData();
 
-    // Flat fields
+    // Flat fields (text, boolean, date, etc.)
     const flatFields = [
       "name", "slug", "address", "map_link", "website",
       "established_date", "type", "district", "level",
-      "level_text", "verification", "featured", "priority"
+      "level_text", "verification", "featured", "priority",
+      "salient_feature", "scholarship", "about_college"
     ];
     flatFields.forEach((key) => {
       if (formData[key] !== undefined && formData[key] !== null) {
@@ -55,7 +99,7 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
       }
     });
 
-    // Images
+    // Logo & Cover Photo
     if (formData.logo instanceof File) {
       data.append("logo", formData.logo);
     }
@@ -63,78 +107,43 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
       data.append("cover_photo", formData.cover_photo);
     }
 
-    // Phones
-    (formData.phones || []).forEach((item, i) => {
-      if (item.phone) {
-        data.append(`phones[${i}][phone]`, item.phone);
-      }
-    });
-
-    // Emails
-    (formData.emails || []).forEach((item, i) => {
-      if (item.email) {
-        data.append(`emails[${i}][email]`, item.email);
-      }
-    });
-
+    // --- Nested arrays with file handling ---
     // Gallery
-    (formData.gallery || []).forEach((item, i) => {
-      if (item.image instanceof File) {
-        data.append(`gallery[${i}][image]`, item.image);
-      }
-      if (item.caption) {
-        data.append(`gallery[${i}][caption]`, item.caption);
-      }
+    const { metadata: galleryMeta, files: galleryFiles } = processGallery(formData.gallery);
+    data.append("gallery", JSON.stringify(galleryMeta));
+    Object.entries(galleryFiles).forEach(([key, file]) => {
+      data.append(key, file);
     });
 
-    // Brochures
-    (formData.brochures || []).forEach((item, i) => {
+    // Brochures (if you want to allow file upload for brochures, process similar to gallery)
+    // For simplicity, assume brochures only contains {file, description} with file being a File or URL.
+    const brochuresMeta = (formData.brochures || []).map((item, i) => {
+      // If brochure file is a File, upload separately and leave empty string here.
       if (item.file instanceof File) {
-        data.append(`brochures[${i}][file]`, item.file);
-      }
-      if (item.description) {
-        data.append(`brochures[${i}][description]`, item.description);
-      }
-    });
-
-    // Social Media
-    (formData.social_media || []).forEach((item, i) => {
-      if (item.platform && item.url) {
-        data.append(`social_media[${i}][platform]`, item.platform);
-        data.append(`social_media[${i}][url]`, item.url);
+        data.append(`brochures_${i}_file`, item.file);
+        return { description: item.description || "" };
+      } else {
+        return { file: item.file, description: item.description || "" };
       }
     });
+    data.append("brochures", JSON.stringify(brochuresMeta));
 
-    // FAQs
-    (formData.faqs || []).forEach((item, i) => {
-      if (item.question && item.answer) {
-        data.append(`faqs[${i}][question]`, item.question);
-        data.append(`faqs[${i}][answer]`, item.answer);
-      }
+    // Messages
+    const { metadata: messagesMeta, files: messagesFiles } = processMessages(formData.messages);
+    data.append("messages", JSON.stringify(messagesMeta));
+    Object.entries(messagesFiles).forEach(([key, file]) => {
+      data.append(key, file);
     });
 
-    // Message
-    const msg = formData.messages?.[0];
-    if (msg) {
-      if (msg.title) data.append("messages[0][title]", msg.title);
-      if (msg.message) data.append("messages[0][message]", msg.message);
-      if (msg.name) data.append("messages[0][name]", msg.name);
-      if (msg.designation) data.append("messages[0][designation]", msg.designation);
-      if (msg.image instanceof File) {
-        data.append("messages[0][image]", msg.image);
-      }
-    }
+    // Phones/Emails/Social Media/FAQs (just JSON)
+    data.append("phones", JSON.stringify(formData.phones || []));
+    data.append("emails", JSON.stringify(formData.emails || []));
+    data.append("social_media", JSON.stringify(formData.social_media || []));
+    data.append("faqs", JSON.stringify(formData.faqs || []));
+    // School Courses (must use school_courses everywhere!)
+    data.append("school_courses", JSON.stringify(formData.school_courses || []));
 
-    // Courses
-    (formData.courses || []).forEach((item, i) => {
-      if (item.course) {
-        data.append(`courses[${i}][course]`, item.course);
-        if (item.fee) data.append(`courses[${i}][fee]`, item.fee);
-        if (item.status) data.append(`courses[${i}][status]`, item.status);
-      }
-    });
-
-    // Facilities and Universities (IDs)
+    // M2M: Send each PK as required by backend
     (formData.facilities || []).forEach((id) => data.append("facilities", id));
     (formData.universities || []).forEach((id) => data.append("universities", id));
 
@@ -168,7 +177,11 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
       <SchoolSocialMedia formData={formData} setFormData={setFormData} />
       <SchoolFAQ formData={formData} setFormData={setFormData} />
       <SchoolMessage formData={formData} setFormData={setFormData} />
-      <SchoolCourses formData={formData} setFormData={setFormData} />
+      <SchoolCourses
+        formData={formData}
+        setFormData={setFormData}
+        fieldKey="school_courses"
+      />
       <SchoolFacilities formData={formData} setFormData={setFormData} />
       <SchoolUniversity formData={formData} setFormData={setFormData} />
       <SchoolLevel formData={formData} setFormData={setFormData} />

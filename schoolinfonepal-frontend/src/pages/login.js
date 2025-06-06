@@ -27,9 +27,10 @@ export default function LoginPage() {
     try {
       const data = await loginSuperadmin(form.email, form.password);
       console.log("Login successful:", data);
-      saveAuthToken(data.access); // ✅ Save access token
 
-      // ✅ Small delay to ensure token is saved before redirect
+      // ✅ Save both tokens here
+      saveAuthToken(data.access, data.refresh);
+
       setTimeout(() => {
         if (data.role === "admin") {
           window.location.href = "/admin/dashboard";

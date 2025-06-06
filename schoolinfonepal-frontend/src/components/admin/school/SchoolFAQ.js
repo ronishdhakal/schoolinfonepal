@@ -1,14 +1,15 @@
 "use client";
 const SchoolFAQ = ({ formData, setFormData }) => {
+  // Defensive: always use faqs array
   const handleQuestionChange = (index, value) => {
     const updated = [...(formData.faqs || [])];
-    updated[index].question = value;
+    updated[index] = { ...updated[index], question: value };
     setFormData((prev) => ({ ...prev, faqs: updated }));
   };
 
   const handleAnswerChange = (index, value) => {
     const updated = [...(formData.faqs || [])];
-    updated[index].answer = value;
+    updated[index] = { ...updated[index], answer: value };
     setFormData((prev) => ({ ...prev, faqs: updated }));
   };
 
@@ -18,7 +19,7 @@ const SchoolFAQ = ({ formData, setFormData }) => {
   };
 
   const removeFAQ = (index) => {
-    const updated = [...formData.faqs];
+    const updated = [...(formData.faqs || [])];
     updated.splice(index, 1);
     setFormData((prev) => ({ ...prev, faqs: updated }));
   };
@@ -26,22 +27,23 @@ const SchoolFAQ = ({ formData, setFormData }) => {
   return (
     <div className="mb-8">
       <label className="block font-medium mb-2">Frequently Asked Questions</label>
-
       {(formData.faqs || []).map((item, index) => (
         <div key={index} className="mb-6 border rounded p-4 space-y-3 bg-gray-50">
           <input
             type="text"
             placeholder="Question"
-            value={item.question}
+            value={item.question || ""}
             onChange={(e) => handleQuestionChange(index, e.target.value)}
             className="input w-full"
+            required
           />
           <textarea
             placeholder="Answer"
-            value={item.answer}
+            value={item.answer || ""}
             onChange={(e) => handleAnswerChange(index, e.target.value)}
             className="input w-full"
             rows={3}
+            required
           />
           <button
             type="button"

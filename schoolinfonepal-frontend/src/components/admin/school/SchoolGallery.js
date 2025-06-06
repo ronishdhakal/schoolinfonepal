@@ -3,7 +3,8 @@ import { useState } from "react";
 import Image from "next/image";
 
 const SchoolGallery = ({ formData, setFormData }) => {
-  const [newImages, setNewImages] = useState([]);
+  // To reset file input
+  const [inputKey, setInputKey] = useState(Date.now());
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
@@ -14,17 +15,17 @@ const SchoolGallery = ({ formData, setFormData }) => {
     });
 
     setFormData((prev) => ({ ...prev, gallery: updated }));
-    setNewImages([]); // reset file input
+    setInputKey(Date.now());
   };
 
   const handleCaptionChange = (index, value) => {
-    const updated = [...formData.gallery];
+    const updated = [...(formData.gallery || [])];
     updated[index].caption = value;
     setFormData((prev) => ({ ...prev, gallery: updated }));
   };
 
   const removeImage = (index) => {
-    const updated = [...formData.gallery];
+    const updated = [...(formData.gallery || [])];
     updated.splice(index, 1);
     setFormData((prev) => ({ ...prev, gallery: updated }));
   };
@@ -33,6 +34,7 @@ const SchoolGallery = ({ formData, setFormData }) => {
     <div className="mb-8">
       <label className="block font-medium mb-2">Gallery Images</label>
       <input
+        key={inputKey}
         type="file"
         multiple
         accept="image/*"

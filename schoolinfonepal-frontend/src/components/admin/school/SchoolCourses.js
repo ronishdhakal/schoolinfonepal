@@ -9,36 +9,48 @@ const SchoolCourses = ({ formData, setFormData }) => {
     fetchCoursesDropdown().then(setCoursesList);
   }, []);
 
+  // Always work on 'school_courses' key!
   const handleCourseChange = (index, field, value) => {
-    const updated = [...(formData.courses || [])];
-    updated[index][field] = value;
-    setFormData((prev) => ({ ...prev, courses: updated }));
+    const updated = [...(formData.school_courses || [])];
+    if (field === "course") {
+      // Ensure course is always integer for backend
+      updated[index][field] = value ? parseInt(value, 10) : "";
+    } else if (field === "fee") {
+      updated[index][field] = value === "" ? "" : value;
+    } else {
+      updated[index][field] = value;
+    }
+    setFormData((prev) => ({ ...prev, school_courses: updated }));
   };
 
   const addCourse = () => {
-    const updated = [...(formData.courses || []), { course: "", fee: "", status: "Open" }];
-    setFormData((prev) => ({ ...prev, courses: updated }));
+    const updated = [
+      ...(formData.school_courses || []),
+      { course: "", fee: "", status: "Open", admin_open: true },
+    ];
+    setFormData((prev) => ({ ...prev, school_courses: updated }));
   };
 
   const removeCourse = (index) => {
-    const updated = [...formData.courses];
+    const updated = [...(formData.school_courses || [])];
     updated.splice(index, 1);
-    setFormData((prev) => ({ ...prev, courses: updated }));
+    setFormData((prev) => ({ ...prev, school_courses: updated }));
   };
 
   return (
     <div className="mb-8">
       <label className="block font-medium mb-2">Courses Offered</label>
-
-      {(formData.courses || []).map((item, index) => (
+      {(formData.school_courses || []).map((item, index) => (
         <div
           key={index}
           className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center mb-4"
         >
+          {/* Course select */}
           <select
             value={item.course}
             onChange={(e) => handleCourseChange(index, "course", e.target.value)}
             className="input"
+            required
           >
             <option value="">-- Select Course --</option>
             {coursesList.map((c) => (
@@ -48,6 +60,7 @@ const SchoolCourses = ({ formData, setFormData }) => {
             ))}
           </select>
 
+          {/* Fee */}
           <input
             type="number"
             placeholder="Fee (optional)"
@@ -56,6 +69,7 @@ const SchoolCourses = ({ formData, setFormData }) => {
             className="input"
           />
 
+          {/* Status */}
           <select
             value={item.status}
             onChange={(e) => handleCourseChange(index, "status", e.target.value)}
@@ -65,6 +79,7 @@ const SchoolCourses = ({ formData, setFormData }) => {
             <option value="Closed">Closed</option>
           </select>
 
+          {/* Remove button */}
           <button
             type="button"
             onClick={() => removeCourse(index)}
@@ -74,7 +89,6 @@ const SchoolCourses = ({ formData, setFormData }) => {
           </button>
         </div>
       ))}
-
       <button type="button" onClick={addCourse} className="text-blue-600">
         + Add Course
       </button>

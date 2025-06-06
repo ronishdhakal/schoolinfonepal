@@ -48,7 +48,6 @@ class SchoolMessageSerializer(serializers.ModelSerializer):
 
 class SchoolCourseSerializer(serializers.ModelSerializer):
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
-
     class Meta:
         model = SchoolCourse
         fields = ['id', 'course', 'fee', 'status', 'admin_open']
@@ -83,20 +82,18 @@ class SchoolSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def create(self, validated_data):
-        nested_fields = {
-            'phones': validated_data.pop('phones', []),
-            'emails': validated_data.pop('emails', []),
-            'gallery': validated_data.pop('gallery', []),
-            'brochures': validated_data.pop('brochures', []),
-            'social_media': validated_data.pop('social_media', []),
-            'faqs': validated_data.pop('faqs', []),
-            'messages': validated_data.pop('messages', []),
-            'school_courses': validated_data.pop('school_courses', [])
-        }
+        # --- Pop nested fields, default to []
+        nested = {}
+        for field in [
+            'phones', 'emails', 'gallery', 'brochures',
+            'social_media', 'faqs', 'messages', 'school_courses'
+        ]:
+            nested[field] = validated_data.pop(field, [])
 
         facilities = validated_data.pop('facilities', [])
         universities = validated_data.pop('universities', [])
 
+        # Unique slug logic
         base_slug = slugify(validated_data.get("slug") or validated_data.get("name", "school"))
         slug = base_slug
         counter = 1
@@ -109,29 +106,39 @@ class SchoolSerializer(serializers.ModelSerializer):
         school.facilities.set(facilities)
         school.universities.set(universities)
 
-        for field_name, items in nested_fields.items():
-            for item in items:
-                model = getattr(School, field_name).rel.related_model
-                model.objects.create(school=school, **item)
+        # Save nested fields (files handled in the view, not here)
+        for item in nested['phones']:
+            if item.get('phone'):
+                SchoolPhone.objects.create(school=school, phone=item['phone'])
+        for item in nested['emails']:
+            if item.get('email'):
+                SchoolEmail.objects.create(school=school, email=item['email'])
+        for item in nested['gallery']:
+            SchoolGallery.objects.create(school=school, **item)
+        for item in nested['brochures']:
+            SchoolBrochure.objects.create(school=school, **item)
+        for item in nested['social_media']:
+            SchoolSocialMedia.objects.create(school=school, **item)
+        for item in nested['faqs']:
+            SchoolFAQ.objects.create(school=school, **item)
+        for item in nested['messages']:
+            SchoolMessage.objects.create(school=school, **item)
+        for item in nested['school_courses']:
+            SchoolCourse.objects.create(school=school, **item)
 
         return school
 
     def update(self, instance, validated_data):
-        nested_fields = {
-            'phones': validated_data.pop('phones', None),
-            'emails': validated_data.pop('emails', None),
-            'gallery': validated_data.pop('gallery', None),
-            'brochures': validated_data.pop('brochures', None),
-            'social_media': validated_data.pop('social_media', None),
-            'faqs': validated_data.pop('faqs', None),
-            'messages': validated_data.pop('messages', None),
-            'school_courses': validated_data.pop('school_courses', None)
-        }
+        nested = {}
+        for field in [
+            'phones', 'emails', 'gallery', 'brochures',
+            'social_media', 'faqs', 'messages', 'school_courses'
+        ]:
+            nested[field] = validated_data.pop(field, None)
 
         facilities = validated_data.pop('facilities', None)
         universities = validated_data.pop('universities', None)
-
-        validated_data.pop("slug", None)
+        validated_data.pop("slug", None)  # Don't update slug
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -142,11 +149,40 @@ class SchoolSerializer(serializers.ModelSerializer):
         if universities is not None:
             instance.universities.set(universities)
 
-        for field_name, items in nested_fields.items():
-            if items is not None:
-                getattr(instance, field_name).all().delete()
-                model = getattr(School, field_name).rel.related_model
-                for item in items:
-                    model.objects.create(school=instance, **item)
+        # Replace nested: delete all, add new
+        if nested['phones'] is not None:
+            instance.phones.all().delete()
+            for item in nested['phones']:
+                if item.get('phone'):
+                    SchoolPhone.objects.create(school=instance, phone=item['phone'])
+        if nested['emails'] is not None:
+            instance.emails.all().delete()
+            for item in nested['emails']:
+                if item.get('email'):
+                    SchoolEmail.objects.create(school=instance, email=item['email'])
+        if nested['gallery'] is not None:
+            instance.gallery.all().delete()
+            for item in nested['gallery']:
+                SchoolGallery.objects.create(school=instance, **item)
+        if nested['brochures'] is not None:
+            instance.brochures.all().delete()
+            for item in nested['brochures']:
+                SchoolBrochure.objects.create(school=instance, **item)
+        if nested['social_media'] is not None:
+            instance.social_media.all().delete()
+            for item in nested['social_media']:
+                SchoolSocialMedia.objects.create(school=instance, **item)
+        if nested['faqs'] is not None:
+            instance.faqs.all().delete()
+            for item in nested['faqs']:
+                SchoolFAQ.objects.create(school=instance, **item)
+        if nested['messages'] is not None:
+            instance.messages.all().delete()
+            for item in nested['messages']:
+                SchoolMessage.objects.create(school=instance, **item)
+        if nested['school_courses'] is not None:
+            instance.school_courses.all().delete()
+            for item in nested['school_courses']:
+                SchoolCourse.objects.create(school=instance, **item)
 
         return instance
