@@ -1,80 +1,119 @@
-"use client";
-import { useState } from "react";
-import Image from "next/image";
+"use client"
+import { useState } from "react"
 
 const SchoolGallery = ({ formData, setFormData }) => {
-  // To reset file input
-  const [inputKey, setInputKey] = useState(Date.now());
+  const [imageErrors, setImageErrors] = useState({})
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    const updated = [...(formData.gallery || [])];
+    const files = Array.from(e.target.files)
+    const newImages = files.map((file) => ({
+      image: file,
+      caption: "",
+    }))
 
-    files.forEach((file) => {
-      updated.push({ image: file, caption: "" });
-    });
+    setFormData((prev) => ({
+      ...prev,
+      gallery: [...(prev.gallery || []), ...newImages],
+    }))
+  }
 
-    setFormData((prev) => ({ ...prev, gallery: updated }));
-    setInputKey(Date.now());
-  };
-
-  const handleCaptionChange = (index, value) => {
-    const updated = [...(formData.gallery || [])];
-    updated[index].caption = value;
-    setFormData((prev) => ({ ...prev, gallery: updated }));
-  };
+  const updateCaption = (index, caption) => {
+    const gallery = [...(formData.gallery || [])]
+    gallery[index] = { ...gallery[index], caption }
+    setFormData((prev) => ({ ...prev, gallery }))
+  }
 
   const removeImage = (index) => {
-    const updated = [...(formData.gallery || [])];
-    updated.splice(index, 1);
-    setFormData((prev) => ({ ...prev, gallery: updated }));
-  };
+    const gallery = (formData.gallery || []).filter((_, i) => i !== index)
+    setFormData((prev) => ({ ...prev, gallery }))
+
+    // Remove error state for this image
+    const newErrors = { ...imageErrors }
+    delete newErrors[index]
+    setImageErrors(newErrors)
+  }
+
+  // Helper function to get image URL safely
+  const getImageUrl = (image, index) => {
+    if (image instanceof File) {
+      return URL.createObjectURL(image)
+    }
+    if (typeof image === "string") {
+      // Skip if it's already marked as error
+      if (imageErrors[index]) {
+        return "/placeholder.svg?height=200&width=300"
+      }
+
+      // If it contains full URL or invalid characters, mark as error
+      if (image.includes("http:") || image.includes("http%3A")) {
+        setImageErrors((prev) => ({ ...prev, [index]: true }))
+        return "/placeholder.svg?height=200&width=300"
+      }
+
+      // If it's a valid relative path
+      if (image.startsWith("/")) {
+        return `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}${image}`
+      }
+    }
+    return "/placeholder.svg?height=200&width=300"
+  }
+
+  const handleImageError = (index) => {
+    setImageErrors((prev) => ({ ...prev, [index]: true }))
+  }
 
   return (
-    <div className="mb-8">
-      <label className="block font-medium mb-2">Gallery Images</label>
-      <input
-        key={inputKey}
-        type="file"
-        multiple
-        accept="image/*"
-        onChange={handleImageChange}
-        className="mb-4"
-      />
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-900 mb-6">School Gallery</h3>
 
-      {(formData.gallery || []).map((item, index) => (
-        <div key={index} className="flex items-center gap-4 mb-4">
-          {item.image && (
-            <Image
-              src={
-                typeof item.image === "string"
-                  ? item.image
-                  : URL.createObjectURL(item.image)
-              }
-              alt={`Gallery ${index + 1}`}
-              width={120}
-              height={80}
-              className="rounded border"
-            />
-          )}
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Add Images</label>
           <input
-            type="text"
-            value={item.caption || ""}
-            placeholder="Caption"
-            onChange={(e) => handleCaptionChange(index, e.target.value)}
-            className="input flex-1"
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleImageChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          <button
-            type="button"
-            onClick={() => removeImage(index)}
-            className="text-red-500"
-          >
-            Remove
-          </button>
+          <p className="text-sm text-gray-500 mt-1">Select multiple images to add to the gallery</p>
         </div>
-      ))}
-    </div>
-  );
-};
 
-export default SchoolGallery;
+        {formData.gallery && formData.gallery.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {formData.gallery.map((item, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div className="aspect-video bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                  <img
+                    src={getImageUrl(item.image, index) || "/placeholder.svg"}
+                    alt={item.caption || "Gallery image"}
+                    className="w-full h-full object-cover"
+                    onError={() => handleImageError(index)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={item.caption || ""}
+                    onChange={(e) => updateCaption(index, e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Image caption"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="w-full text-red-600 hover:text-red-800 text-sm font-medium"
+                  >
+                    Remove Image
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default SchoolGallery

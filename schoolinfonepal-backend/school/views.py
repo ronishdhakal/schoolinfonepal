@@ -11,6 +11,7 @@ from .models import School, SchoolGallery, SchoolBrochure, SchoolMessage
 from .serializers import SchoolSerializer
 from core.filters import SchoolFilter
 import json
+import os
 
 def safe_json_loads(val):
     """Utility: safely decode JSON or pass through lists/dicts."""
@@ -22,6 +23,25 @@ def safe_json_loads(val):
         return json.loads(val)
     except Exception:
         return []
+
+def safe_file_delete(file_field):
+    """Safely delete a file, handling invalid paths gracefully"""
+    if not file_field:
+        return
+    
+    try:
+        # Check if the file path contains invalid characters (like full URLs)
+        file_path = str(file_field)
+        if 'http:' in file_path or 'https:' in file_path:
+            # This is a corrupted path, just delete the database record
+            return
+        
+        # Try to delete the actual file
+        if file_field and hasattr(file_field, 'delete'):
+            file_field.delete(save=False)
+    except (OSError, ValueError) as e:
+        # Log the error but don't crash
+        print(f"Warning: Could not delete file {file_field}: {e}")
 
 class SchoolListView(ListAPIView):
     queryset = School.objects.all().order_by('-priority', 'name')
@@ -44,68 +64,33 @@ class SchoolDetailView(RetrieveAPIView):
 @permission_classes([IsAdminUser])
 @parser_classes([MultiPartParser, FormParser])
 def create_school(request):
-    data = request.data.copy()
-    # --- Parse nested JSON fields ---
+    data = request.data.dict()
+    
+    # Handle boolean fields
+    if "verification" in data:
+        data["verification"] = data["verification"].lower() == "true"
+    if "featured" in data:
+        data["featured"] = data["featured"].lower() == "true"
+    
+    # Handle JSON fields
     for field in [
         "phones", "emails", "gallery", "brochures", "social_media",
         "faqs", "messages", "school_courses"
     ]:
-        data[field] = safe_json_loads(request.data.get(field, "[]"))
+        data[field] = safe_json_loads(request.data.get(field, []))
 
-    # For M2M, set all sent values as lists
-    data.setlist("facilities", request.data.getlist("facilities"))
-    data.setlist("universities", request.data.getlist("universities"))
+    # Handle M2M fields
+    facilities = request.data.getlist("facilities")
+    universities = request.data.getlist("universities")
+    data["facilities"] = facilities
+    data["universities"] = universities
 
-    # Save with blank files first
-    serializer = SchoolSerializer(data=data)
+    serializer = SchoolSerializer(data=data, context={'request': request})
     if serializer.is_valid():
         school = serializer.save()
 
-        # --- FILE HANDLING (logo, cover, gallery, brochures, message image) ---
-        if "logo" in request.FILES:
-            school.logo = request.FILES["logo"]
-        if "cover_photo" in request.FILES:
-            school.cover_photo = request.FILES["cover_photo"]
-        school.save()
-
-        # --- GALLERY IMAGES ---
-        gallery = safe_json_loads(request.data.get("gallery", "[]"))
-        for i, item in enumerate(gallery):
-            img_key = f"gallery_{i}_image"
-            image = request.FILES.get(img_key)
-            caption = item.get("caption", "")
-            if image:
-                SchoolGallery.objects.create(school=school, image=image, caption=caption)
-            elif item.get("image"):  # Already uploaded path (string)
-                SchoolGallery.objects.create(school=school, image=item["image"], caption=caption)
-
-        # --- BROCHURES (optional) ---
-        brochures = safe_json_loads(request.data.get("brochures", "[]"))
-        for i, item in enumerate(brochures):
-            file_key = f"brochures_{i}_file"
-            brochure_file = request.FILES.get(file_key)
-            description = item.get("description", "")
-            if brochure_file:
-                SchoolBrochure.objects.create(school=school, file=brochure_file, description=description)
-            elif item.get("file"):
-                SchoolBrochure.objects.create(school=school, file=item["file"], description=description)
-
-        # --- PRINCIPAL/HEAD MESSAGE IMAGE ---
-        messages = safe_json_loads(request.data.get("messages", "[]"))
-        for i, msg in enumerate(messages):
-            img_key = f"messages_{i}_image"
-            msg_image = request.FILES.get(img_key)
-            msg_data = {
-                "school": school,
-                "title": msg.get("title", ""),
-                "message": msg.get("message", ""),
-                "name": msg.get("name", ""),
-                "designation": msg.get("designation", ""),
-                "image": msg_image if msg_image else msg.get("image", None)
-            }
-            # Only save if at least one field is filled (optional, for defense)
-            if any([msg_data["title"], msg_data["message"], msg_data["name"], msg_data["designation"], msg_data["image"]]):
-                SchoolMessage.objects.create(**msg_data)
+        # Handle file uploads
+        _handle_file_uploads(school, request)
 
         return Response(SchoolSerializer(school).data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -115,83 +100,141 @@ def create_school(request):
 @parser_classes([MultiPartParser, FormParser])
 def update_school(request, slug):
     school = get_object_or_404(School, slug=slug)
-    data = request.data.copy()
+    data = request.data.dict()
+    
+    # Handle boolean fields
+    if "verification" in data:
+        data["verification"] = data["verification"].lower() == "true"
+    if "featured" in data:
+        data["featured"] = data["featured"].lower() == "true"
+    
+    # Handle JSON fields only if provided
     for field in [
         "phones", "emails", "gallery", "brochures", "social_media",
         "faqs", "messages", "school_courses"
     ]:
-        data[field] = safe_json_loads(request.data.get(field, "[]"))
+        if field in request.data:
+            data[field] = safe_json_loads(request.data.get(field, []))
 
-    data.setlist("facilities", request.data.getlist("facilities"))
-    data.setlist("universities", request.data.getlist("universities"))
+    # Handle M2M fields
+    if "facilities" in request.data:
+        data["facilities"] = request.data.getlist("facilities")
+    if "universities" in request.data:
+        data["universities"] = request.data.getlist("universities")
 
-    serializer = SchoolSerializer(school, data=data, partial=True)
+    serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
     if serializer.is_valid():
         school = serializer.save()
 
-        # --- FILE HANDLING (logo, cover, gallery, brochures, message image) ---
-        if "logo" in request.FILES:
-            if school.logo:
-                school.logo.delete(save=False)
-            school.logo = request.FILES["logo"]
-        if "cover_photo" in request.FILES:
-            if school.cover_photo:
-                school.cover_photo.delete(save=False)
-            school.cover_photo = request.FILES["cover_photo"]
-        school.save()
-
-        # --- NESTED FILES: Clear & Re-create gallery, brochures, messages ---
-        # Gallery
-        school.gallery.all().delete()
-        gallery = safe_json_loads(request.data.get("gallery", "[]"))
-        for i, item in enumerate(gallery):
-            img_key = f"gallery_{i}_image"
-            image = request.FILES.get(img_key)
-            caption = item.get("caption", "")
-            if image:
-                SchoolGallery.objects.create(school=school, image=image, caption=caption)
-            elif item.get("image"):  # Already uploaded path (string)
-                SchoolGallery.objects.create(school=school, image=item["image"], caption=caption)
-
-        # Brochures
-        school.brochures.all().delete()
-        brochures = safe_json_loads(request.data.get("brochures", "[]"))
-        for i, item in enumerate(brochures):
-            file_key = f"brochures_{i}_file"
-            brochure_file = request.FILES.get(file_key)
-            description = item.get("description", "")
-            if brochure_file:
-                SchoolBrochure.objects.create(school=school, file=brochure_file, description=description)
-            elif item.get("file"):
-                SchoolBrochure.objects.create(school=school, file=item["file"], description=description)
-
-        # Messages
-        school.messages.all().delete()
-        messages = safe_json_loads(request.data.get("messages", "[]"))
-        for i, msg in enumerate(messages):
-            img_key = f"messages_{i}_image"
-            msg_image = request.FILES.get(img_key)
-            msg_data = {
-                "school": school,
-                "title": msg.get("title", ""),
-                "message": msg.get("message", ""),
-                "name": msg.get("name", ""),
-                "designation": msg.get("designation", ""),
-                "image": msg_image if msg_image else msg.get("image", None)
-            }
-            if any([msg_data["title"], msg_data["message"], msg_data["name"], msg_data["designation"], msg_data["image"]]):
-                SchoolMessage.objects.create(**msg_data)
+        # Handle file uploads
+        _handle_file_uploads(school, request, is_update=True)
 
         return Response(SchoolSerializer(school).data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def _handle_file_uploads(school, request, is_update=False):
+    """Handle all file uploads for school"""
+    
+    # Handle main images
+    if "logo" in request.FILES:
+        if is_update and school.logo:
+            safe_file_delete(school.logo)
+        school.logo = request.FILES["logo"]
+    
+    if "cover_photo" in request.FILES:
+        if is_update and school.cover_photo:
+            safe_file_delete(school.cover_photo)
+        school.cover_photo = request.FILES["cover_photo"]
+    
+    if "og_image" in request.FILES:
+        if is_update and school.og_image:
+            safe_file_delete(school.og_image)
+        school.og_image = request.FILES["og_image"]
+    
+    school.save()
+
+    # Handle gallery images
+    if "gallery" in request.data:
+        if is_update:
+            # Clean up existing gallery items
+            for gallery_item in school.gallery.all():
+                safe_file_delete(gallery_item.image)
+                gallery_item.delete()
+
+        gallery_data = safe_json_loads(request.data.get("gallery", []))
+        for i, item in enumerate(gallery_data):
+            img_key = f"gallery_{i}_image"
+            if img_key in request.FILES:
+                SchoolGallery.objects.create(
+                    school=school,
+                    image=request.FILES[img_key],
+                    caption=item.get("caption", "")
+                )
+
+    # Handle brochure files
+    if "brochures" in request.data:
+        if is_update:
+            # Clean up existing brochures
+            for brochure_item in school.brochures.all():
+                safe_file_delete(brochure_item.file)
+                brochure_item.delete()
+
+        brochures_data = safe_json_loads(request.data.get("brochures", []))
+        for i, item in enumerate(brochures_data):
+            file_key = f"brochures_{i}_file"
+            if file_key in request.FILES:
+                SchoolBrochure.objects.create(
+                    school=school,
+                    file=request.FILES[file_key],
+                    description=item.get("description", "")
+                )
+
+    # Handle message images
+    if "messages" in request.data:
+        if is_update:
+            # Clean up existing messages
+            for message_item in school.messages.all():
+                safe_file_delete(message_item.image)
+                message_item.delete()
+
+        messages_data = safe_json_loads(request.data.get("messages", []))
+        for i, msg in enumerate(messages_data):
+            img_key = f"messages_{i}_image"
+            msg_image = request.FILES.get(img_key)
+            
+            # Create message if it has any content
+            if any([msg.get("title"), msg.get("message"), msg.get("name"), msg.get("designation")]) or msg_image:
+                SchoolMessage.objects.create(
+                    school=school,
+                    title=msg.get("title", ""),
+                    message=msg.get("message", ""),
+                    name=msg.get("name", ""),
+                    designation=msg.get("designation", ""),
+                    image=msg_image
+                )
 
 @api_view(["DELETE"])
 @permission_classes([IsAdminUser])
 def delete_school(request, slug):
     school = get_object_or_404(School, slug=slug)
-    for file_field in ["logo", "cover_photo"]:
-        if getattr(school, file_field):
-            getattr(school, file_field).delete(save=False)
+    
+    # Clean up files safely
+    safe_file_delete(school.logo)
+    safe_file_delete(school.cover_photo)
+    safe_file_delete(school.og_image)
+    
+    # Clean up gallery images
+    for gallery_item in school.gallery.all():
+        safe_file_delete(gallery_item.image)
+    
+    # Clean up brochure files
+    for brochure_item in school.brochures.all():
+        safe_file_delete(brochure_item.file)
+    
+    # Clean up message images
+    for message_item in school.messages.all():
+        safe_file_delete(message_item.image)
+    
     school.delete()
     return Response({"message": "School deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 

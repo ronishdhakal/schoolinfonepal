@@ -1,148 +1,123 @@
-"use client";
-import { useEffect, useState } from "react";
-import { fetchDistrictsDropdown } from "@/utils/api";
+"use client"
 
 const SchoolContact = ({ formData, setFormData }) => {
-  const [districts, setDistricts] = useState([]);
-
-  useEffect(() => {
-    fetchDistrictsDropdown().then(setDistricts);
-  }, []);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handlePhoneChange = (index, value) => {
-    const updated = (formData.phones || []).map((item, i) =>
-      i === index ? { ...item, phone: value } : item
-    );
-    setFormData((prev) => ({ ...prev, phones: updated }));
-  };
+    const phones = [...(formData.phones || [])]
+    phones[index] = { phone: value }
+    setFormData((prev) => ({ ...prev, phones }))
+  }
 
   const addPhone = () => {
-    const updated = [...(formData.phones || []), { phone: "" }];
-    setFormData((prev) => ({ ...prev, phones: updated }));
-  };
+    setFormData((prev) => ({
+      ...prev,
+      phones: [...(prev.phones || []), { phone: "" }],
+    }))
+  }
 
   const removePhone = (index) => {
-    const updated = (formData.phones || []).filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, phones: updated }));
-  };
+    const phones = (formData.phones || []).filter((_, i) => i !== index)
+    setFormData((prev) => ({ ...prev, phones }))
+  }
 
   const handleEmailChange = (index, value) => {
-    const updated = (formData.emails || []).map((item, i) =>
-      i === index ? { ...item, email: value } : item
-    );
-    setFormData((prev) => ({ ...prev, emails: updated }));
-  };
+    const emails = [...(formData.emails || [])]
+    emails[index] = { email: value }
+    setFormData((prev) => ({ ...prev, emails }))
+  }
 
   const addEmail = () => {
-    const updated = [...(formData.emails || []), { email: "" }];
-    setFormData((prev) => ({ ...prev, emails: updated }));
-  };
+    setFormData((prev) => ({
+      ...prev,
+      emails: [...(prev.emails || []), { email: "" }],
+    }))
+  }
 
   const removeEmail = (index) => {
-    const updated = (formData.emails || []).filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, emails: updated }));
-  };
-
-  // Filter out blanks before final submit (to be used by parent!)
-  // (If you use onSubmit in parent, add this logic there as well!)
+    const emails = (formData.emails || []).filter((_, i) => i !== index)
+    setFormData((prev) => ({ ...prev, emails }))
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div>
-        <label className="block font-medium">Address</label>
-        <input
-          type="text"
-          name="address"
-          value={formData.address || ""}
-          onChange={handleChange}
-          className="input"
-        />
-      </div>
-      <div>
-        <label className="block font-medium">District</label>
-        <select
-          name="district"
-          value={formData.district || ""}
-          onChange={handleChange}
-          className="input"
-        >
-          <option value="">-- Select District --</option>
-          {districts.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="md:col-span-2">
-        <label className="block font-medium">Google Map Link</label>
-        <input
-          type="url"
-          name="map_link"
-          value={formData.map_link || ""}
-          onChange={handleChange}
-          className="input"
-        />
-      </div>
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-900 mb-6">Contact Information</h3>
 
-      {/* Phone Numbers */}
-      <div className="md:col-span-2">
-        <label className="block font-medium mb-2">Phone Numbers</label>
-        {(formData.phones || []).map((item, index) => (
-          <div key={index} className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={item.phone || ""}
-              onChange={(e) => handlePhoneChange(index, e.target.value)}
-              className="input flex-1"
-              placeholder="Enter phone"
-            />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Phone Numbers */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <label className="block text-sm font-medium text-gray-700">Phone Numbers</label>
             <button
               type="button"
-              onClick={() => removePhone(index)}
-              className="text-red-500"
+              onClick={addPhone}
+              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
             >
-              Remove
+              + Add Phone
             </button>
           </div>
-        ))}
-        <button type="button" onClick={addPhone} className="text-blue-600">
-          + Add Phone
-        </button>
-      </div>
+          <div className="space-y-3">
+            {(formData.phones || []).map((phone, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <input
+                  type="tel"
+                  value={phone.phone || ""}
+                  onChange={(e) => handlePhoneChange(index, e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Phone number"
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhone(index)}
+                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            {(!formData.phones || formData.phones.length === 0) && (
+              <p className="text-gray-500 text-sm">No phone numbers added</p>
+            )}
+          </div>
+        </div>
 
-      {/* Emails */}
-      <div className="md:col-span-2">
-        <label className="block font-medium mb-2">Emails</label>
-        {(formData.emails || []).map((item, index) => (
-          <div key={index} className="flex gap-2 mb-2">
-            <input
-              type="email"
-              value={item.email || ""}
-              onChange={(e) => handleEmailChange(index, e.target.value)}
-              className="input flex-1"
-              placeholder="Enter email"
-            />
+        {/* Email Addresses */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <label className="block text-sm font-medium text-gray-700">Email Addresses</label>
             <button
               type="button"
-              onClick={() => removeEmail(index)}
-              className="text-red-500"
+              onClick={addEmail}
+              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
             >
-              Remove
+              + Add Email
             </button>
           </div>
-        ))}
-        <button type="button" onClick={addEmail} className="text-blue-600">
-          + Add Email
-        </button>
+          <div className="space-y-3">
+            {(formData.emails || []).map((email, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <input
+                  type="email"
+                  value={email.email || ""}
+                  onChange={(e) => handleEmailChange(index, e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Email address"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeEmail(index)}
+                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            {(!formData.emails || formData.emails.length === 0) && (
+              <p className="text-gray-500 text-sm">No email addresses added</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SchoolContact;
+export default SchoolContact

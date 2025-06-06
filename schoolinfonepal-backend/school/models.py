@@ -33,8 +33,16 @@ class School(models.Model):
     salient_feature = models.TextField(blank=True)
     scholarship = models.TextField(blank=True)
     about_college = models.TextField(blank=True)
+    
+    # Added Meta Information Fields
+    meta_title = models.CharField(max_length=255, blank=True)
+    meta_description = models.TextField(blank=True)
+    og_title = models.CharField(max_length=255, blank=True)
+    og_description = models.TextField(blank=True)
+    og_image = models.ImageField(upload_to='school/og/', blank=True, null=True)
+    
     created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:

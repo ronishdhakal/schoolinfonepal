@@ -1,173 +1,182 @@
-"use client";
-import Image from "next/image";
-
-const EMPTY_MSG = {
-  title: "",
-  message: "",
-  name: "",
-  designation: "",
-  image: null,
-};
-
-const MAX_MESSAGES = 5; // You can adjust max allowed messages
+"use client"
+import { useState } from "react"
 
 const SchoolMessage = ({ formData, setFormData }) => {
-  // Always use an array, even if empty
-  const messages = formData.messages || [];
+  const [imageErrors, setImageErrors] = useState({})
 
-  // Update a single message by index
-  const updateMessageField = (idx, key, value) => {
-    const updated = messages.map((msg, i) =>
-      i === idx ? { ...msg, [key]: value } : msg
-    );
-    setFormData((prev) => ({ ...prev, messages: updated }));
-  };
+  const handleMessageChange = (index, field, value) => {
+    const messages = [...(formData.messages || [])]
+    messages[index] = { ...messages[index], [field]: value }
+    setFormData((prev) => ({ ...prev, messages }))
+  }
 
-  // Add a new message
+  const handleImageChange = (index, e) => {
+    const file = e.target.files[0]
+    if (file) {
+      handleMessageChange(index, "image", file)
+      // Clear error state when new file is selected
+      const newErrors = { ...imageErrors }
+      delete newErrors[index]
+      setImageErrors(newErrors)
+    }
+  }
+
   const addMessage = () => {
-    if (messages.length >= MAX_MESSAGES) return;
     setFormData((prev) => ({
       ...prev,
-      messages: [...messages, { ...EMPTY_MSG }],
-    }));
-  };
+      messages: [...(prev.messages || []), { title: "", message: "", name: "", designation: "", image: null }],
+    }))
+  }
 
-  // Remove a message by index
-  const removeMessage = (idx) => {
-    setFormData((prev) => ({
-      ...prev,
-      messages: messages.filter((_, i) => i !== idx),
-    }));
-  };
+  const removeMessage = (index) => {
+    const messages = (formData.messages || []).filter((_, i) => i !== index)
+    setFormData((prev) => ({ ...prev, messages }))
 
-  // Handle image change for a specific message
-  const handleImageChange = (idx, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    updateMessageField(idx, "image", file);
-  };
+    // Remove error state for this image
+    const newErrors = { ...imageErrors }
+    delete newErrors[index]
+    setImageErrors(newErrors)
+  }
 
-  const handleRemoveImage = (idx) => {
-    updateMessageField(idx, "image", null);
-  };
+  // Helper function to get image URL safely
+  const getImageUrl = (image, index) => {
+    if (image instanceof File) {
+      return URL.createObjectURL(image)
+    }
+    if (typeof image === "string") {
+      // Skip if it's already marked as error
+      if (imageErrors[index]) {
+        return "/placeholder.svg?height=80&width=80"
+      }
+
+      // If it contains full URL or invalid characters, mark as error
+      if (image.includes("http:") || image.includes("http%3A")) {
+        setImageErrors((prev) => ({ ...prev, [index]: true }))
+        return "/placeholder.svg?height=80&width=80"
+      }
+
+      // If it's a valid relative path
+      if (image.startsWith("/")) {
+        return `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}${image}`
+      }
+    }
+    return "/placeholder.svg?height=80&width=80"
+  }
+
+  const handleImageError = (index) => {
+    setImageErrors((prev) => ({ ...prev, [index]: true }))
+  }
 
   return (
-    <div className="grid grid-cols-1 gap-8 mb-8">
-      <div className="flex items-center justify-between">
-        <label className="text-lg font-semibold">
-          Messages from Principal/Head
-        </label>
-        <button
-          type="button"
-          onClick={addMessage}
-          className={`px-4 py-1 rounded text-white bg-blue-500 hover:bg-blue-700 text-sm ${
-            messages.length >= MAX_MESSAGES ? "opacity-40 cursor-not-allowed" : ""
-          }`}
-          disabled={messages.length >= MAX_MESSAGES}
-        >
-          + Add Message
-        </button>
-      </div>
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-900 mb-6">Principal/Head Messages</h3>
 
-      {messages.length === 0 && (
-        <div className="text-gray-500 italic">No messages added yet.</div>
-      )}
-
-      {messages.map((msg, idx) => (
-        <div
-          key={idx}
-          className="border rounded-xl p-4 relative bg-gray-50 space-y-4 shadow-sm"
-        >
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">Add messages from principal, head, or other officials</p>
           <button
             type="button"
-            onClick={() => removeMessage(idx)}
-            className="absolute right-3 top-3 text-red-500 hover:underline text-xs"
-            title="Remove this message"
+            onClick={addMessage}
+            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
           >
-            Remove
+            + Add Message
           </button>
-          <div>
-            <label className="block font-medium">Title</label>
-            <input
-              type="text"
-              value={msg.title || ""}
-              onChange={(e) => updateMessageField(idx, "title", e.target.value)}
-              className="input"
-              placeholder="Principal's Message, Head Teacher, etc."
-            />
-          </div>
-          <div>
-            <label className="block font-medium">Message</label>
-            <textarea
-              value={msg.message || ""}
-              onChange={(e) =>
-                updateMessageField(idx, "message", e.target.value)
-              }
-              className="input"
-              rows={4}
-              placeholder="Write a welcome, vision, or leadership message here."
-            />
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[160px]">
-              <label className="block font-medium">Name</label>
-              <input
-                type="text"
-                value={msg.name || ""}
-                onChange={(e) =>
-                  updateMessageField(idx, "name", e.target.value)
-                }
-                className="input"
-                placeholder="Full Name"
-              />
-            </div>
-            <div className="flex-1 min-w-[160px]">
-              <label className="block font-medium">Designation</label>
-              <input
-                type="text"
-                value={msg.designation || ""}
-                onChange={(e) =>
-                  updateMessageField(idx, "designation", e.target.value)
-                }
-                className="input"
-                placeholder="Principal, Head, Director, etc."
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block font-medium">Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageChange(idx, e)}
-            />
-            {msg.image && (
-              <div className="mt-3 flex items-center gap-4">
-                <Image
-                  src={
-                    typeof msg.image === "string"
-                      ? msg.image
-                      : URL.createObjectURL(msg.image)
-                  }
-                  alt="Message Person"
-                  width={120}
-                  height={120}
-                  className="rounded border"
-                />
-                <button
-                  type="button"
-                  className="text-red-500 ml-2"
-                  onClick={() => handleRemoveImage(idx)}
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
         </div>
-      ))}
-    </div>
-  );
-};
 
-export default SchoolMessage;
+        {formData.messages && formData.messages.length > 0 && (
+          <div className="space-y-6">
+            {formData.messages.map((msg, index) => (
+              <div key={index} className="p-6 border border-gray-200 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                      <input
+                        type="text"
+                        value={msg.title || ""}
+                        onChange={(e) => handleMessageChange(index, "title", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Message title"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                      <input
+                        type="text"
+                        value={msg.name || ""}
+                        onChange={(e) => handleMessageChange(index, "name", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Full name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                      <input
+                        type="text"
+                        value={msg.designation || ""}
+                        onChange={(e) => handleMessageChange(index, "designation", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="e.g., Principal, Head Teacher"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Photo</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageChange(index, e)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      {msg.image && (
+                        <div className="mt-2">
+                          <img
+                            src={getImageUrl(msg.image, index) || "/placeholder.svg"}
+                            alt="Message author"
+                            className="h-20 w-20 object-cover rounded-lg border"
+                            onError={() => handleImageError(index)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                  <textarea
+                    value={msg.message || ""}
+                    onChange={(e) => handleMessageChange(index, "message", e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Enter the message content"
+                  />
+                </div>
+
+                <div className="flex justify-end mt-4">
+                  <button
+                    type="button"
+                    onClick={() => removeMessage(index)}
+                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                  >
+                    Remove Message
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(!formData.messages || formData.messages.length === 0) && (
+          <p className="text-gray-500 text-sm text-center py-4">No messages added</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default SchoolMessage
