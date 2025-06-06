@@ -68,8 +68,6 @@ export const fetchSchoolsDropdown = () => get("/schools/dropdown/")
 
 // Helper: async headers for FormData requests (no Content-Type)
 async function getTokenHeaders() {
-  // If getAuthHeaders was NOT async, this would still work.
-  // If you ever make it async (e.g. auto-refresh), this is safe!
   const headers = await getAuthHeaders()
   if (headers["Content-Type"]) delete headers["Content-Type"]
   return headers
@@ -130,7 +128,7 @@ export const updateSchool = async (slug, formData) => {
 // ---- DELETE SCHOOL ----
 export const deleteSchool = async (slug) => {
   const headers = await getTokenHeaders()
-  const res = await fetch(`${API_BASE_URL}/schools/delete/${slug}/`, {
+  const res = await fetch(`${API_BASE_URL}/schools/${slug}/delete/`, {
     method: "DELETE",
     headers,
   })
@@ -201,6 +199,76 @@ export const updateCourse = async (slug, formData) => {
 export const deleteCourse = async (slug) => {
   const headers = await getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/courses/${slug}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    throw new Error("Delete failed")
+  }
+  return res.json()
+}
+
+// ========================
+// 🏛️ University APIs
+// ========================
+
+export const fetchUniversities = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/universities/`)
+  Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]))
+  const res = await fetch(url)
+  return res.json()
+}
+
+export const fetchUniversityBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE_URL}/universities/${slug}/`)
+  return res.json()
+}
+
+// ---- CREATE UNIVERSITY ----
+export const createUniversity = async (formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/universities/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create failed")
+  }
+  return res.json()
+}
+
+// ---- UPDATE UNIVERSITY ----
+export const updateUniversity = async (slug, formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/universities/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+// ---- DELETE UNIVERSITY ----
+export const deleteUniversity = async (slug) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/universities/${slug}/delete/`, {
     method: "DELETE",
     headers,
   })
