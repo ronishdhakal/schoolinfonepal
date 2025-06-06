@@ -23,7 +23,7 @@ def safe_json_loads(val):
     except Exception:
         return []
 
-# ✅ Public: List
+# ✅ Public: List with filter + search
 class ScholarshipListView(ListAPIView):
     queryset = Scholarship.objects.all().order_by('-published_date', '-created_at')
     serializer_class = ScholarshipSerializer
@@ -32,8 +32,10 @@ class ScholarshipListView(ListAPIView):
     filterset_class = ScholarshipFilter
     search_fields = [
         'title', 'organizer_custom',
-        'organizer_school__name', 'organizer_university__name'
+        'organizer_school__name', 'organizer_university__name',
+        'university__name', 'level__name'
     ]
+    ordering_fields = ['published_date', 'active_from', 'active_until', 'created_at']
 
 # ✅ Public: Detail
 class ScholarshipDetailView(RetrieveAPIView):
@@ -42,7 +44,7 @@ class ScholarshipDetailView(RetrieveAPIView):
     permission_classes = [AllowAny]
     lookup_field = 'slug'
 
-# ✅ Admin: Create
+# ✅ Admin: Create Scholarship
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 @parser_classes([MultiPartParser, FormParser])
@@ -54,27 +56,42 @@ def create_scholarship(request):
     if serializer.is_valid():
         scholarship = serializer.save()
         return Response(ScholarshipSerializer(scholarship).data, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# ✅ Admin: Update
+# ✅ Admin: Update Scholarship
 @api_view(["PATCH"])
 @permission_classes([IsAdminUser])
 @parser_classes([MultiPartParser, FormParser])
 def update_scholarship(request, slug):
     scholarship = get_object_or_404(Scholarship, slug=slug)
     data = request.data.dict()
-    data["courses"] = safe_json_loads(request.data.get("courses", [])) if "courses" in request.data else None
-
-    serializer = ScholarshipSerializer(scholarship, data=data, partial=True)
+    
+    # Handle courses - only if explicitly provided
+    if "courses" in request.data:
+        data["courses"] = safe_json_loads(request.data.get("courses", []))
+    
+    # Don't include courses in serializer data if not provided
+    serializer_data = {k: v for k, v in data.items() if k != 'courses' or 'courses' in request.data}
+    
+    serializer = ScholarshipSerializer(scholarship, data=serializer_data, partial=True)
     if serializer.is_valid():
         scholarship = serializer.save()
         return Response(ScholarshipSerializer(scholarship).data, status=status.HTTP_200_OK)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# ✅ Admin: Delete
+# ✅ Admin: Delete Scholarship
 @api_view(["DELETE"])
 @permission_classes([IsAdminUser])
 def delete_scholarship(request, slug):
     scholarship = get_object_or_404(Scholarship, slug=slug)
     scholarship.delete()
     return Response({"message": "Scholarship deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+# ✅ Dropdown for scholarships (if needed)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def scholarship_dropdown(request):
+    scholarships = Scholarship.objects.all().values('id', 'title')
+    return Response(scholarships)

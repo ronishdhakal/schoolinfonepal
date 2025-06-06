@@ -1,19 +1,16 @@
 from django.urls import path
-from .views import (
-    FacilityListView,
-    FacilityDetailView,
-    create_facility,
-    update_facility,
-    delete_facility,
-    facility_dropdown
-)
+from . import views
+
+app_name = 'facilities'
 
 urlpatterns = [
-    path('', FacilityListView.as_view(), name='facility-list'),
-    path("dropdown/", facility_dropdown),
-    path('create/', create_facility, name='facility-create'),
-    path('<slug:slug>/', FacilityDetailView.as_view(), name='facility-detail'),
-
-    path('<slug:slug>/update/', update_facility, name='facility-update'),
-    path('<slug:slug>/delete/', delete_facility, name='facility-delete'),
+    # Public endpoints
+    path('', views.FacilityListView.as_view(), name='facility-list'),
+    path('dropdown/', views.FacilityDropdownView.as_view(), name='facility-dropdown'),
+    path('<slug:slug>/', views.FacilityDetailView.as_view(), name='facility-detail'),
+    
+    # Admin endpoints (make sure these come BEFORE the slug pattern)
+    path('create/', views.create_facility, name='facility-create'),
+    path('<slug:slug>/update/', views.update_facility, name='facility-update'),
+    path('<slug:slug>/delete/', views.delete_facility, name='facility-delete'),
 ]

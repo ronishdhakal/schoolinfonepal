@@ -10,6 +10,11 @@ const navItems = [
   { name: "Advertisements", path: "/admin/advertisements" },
   { name: "Events", path: "/admin/events" },
   { name: "Informations", path: "/admin/information" },
+  { name: "Scholarships", path: "/admin/scholarships" },
+  { name: "Districts", path: "/admin/districts" },
+  { name: "Facilities", path: "/admin/facilities" },
+  { name: "Levels", path: "/admin/levels" },
+  { name: "Types", path: "/admin/types" },
   { name: "Logout", path: "/logout" },
 ];
 

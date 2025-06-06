@@ -8,7 +8,7 @@ from django.utils.text import slugify
 
 class ScholarshipSerializer(serializers.ModelSerializer):
     slug = serializers.CharField(required=False, allow_blank=True)
-
+    
     organizer_school = serializers.PrimaryKeyRelatedField(
         queryset=School.objects.all(), required=False, allow_null=True
     )
@@ -37,16 +37,31 @@ class ScholarshipSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def validate(self, attrs):
+        # Ensure at least one organizer is provided
         if not (
             attrs.get('organizer_school') or
             attrs.get('organizer_university') or
             attrs.get('organizer_custom')
         ):
-            raise serializers.ValidationError("Please specify at least one organizer: school, university, or custom text.")
+            raise serializers.ValidationError(
+                "Please specify at least one organizer: school, university, or custom text."
+            )
+        
+        # Validate date range
+        active_from = attrs.get('active_from')
+        active_until = attrs.get('active_until')
+        
+        if active_from and active_until and active_from >= active_until:
+            raise serializers.ValidationError(
+                "Active until date must be after active from date."
+            )
+        
         return attrs
 
     def create(self, validated_data):
         courses = validated_data.pop('courses', [])
+        
+        # Generate unique slug
         requested_slug = validated_data.get("slug")
         base_slug = slugify(requested_slug or validated_data.get("title", "scholarship"))
         slug = base_slug
@@ -62,12 +77,16 @@ class ScholarshipSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         courses = validated_data.pop('courses', None)
+        
+        # Remove slug from validated_data to prevent updates
         validated_data.pop("slug", None)
 
+        # Update all other fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
+        # Update courses if provided
         if courses is not None:
             instance.courses.set(courses)
 
