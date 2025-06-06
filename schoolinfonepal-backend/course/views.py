@@ -51,6 +51,7 @@ def create_course(request):
     data = request.data.dict()
     data["disciplines"] = safe_json_loads(request.data.get("disciplines", []))
     data["attachments"] = safe_json_loads(request.data.get("attachments", []))
+    data["long_description"] = request.data.get("long_description", "")
 
     serializer = CourseSerializer(data=data)
     if serializer.is_valid():
@@ -76,10 +77,33 @@ def create_course(request):
 def update_course(request, slug):
     course = get_object_or_404(Course, slug=slug)
     data = request.data.dict()
-    data["disciplines"] = safe_json_loads(request.data.get("disciplines", [])) if "disciplines" in request.data else None
-    data["attachments"] = safe_json_loads(request.data.get("attachments", [])) if "attachments" in request.data else None
+    
+    # Handle disciplines
+    if "disciplines" in request.data:
+        data["disciplines"] = safe_json_loads(request.data.get("disciplines", []))
+    
+    # Handle long_description
+    if "long_description" in request.data:
+        data["long_description"] = request.data.get("long_description", "")
+    
+    # Handle attachments - only if explicitly provided
+    # This prevents the "attachments cannot be null" error
+    if "attachments" in request.data:
+        attachments_data = safe_json_loads(request.data.get("attachments", []))
+        data["attachments"] = attachments_data
+        
+        # If attachments is empty array, it means user wants to remove all existing attachments
+        if attachments_data == []:
+            # Delete existing attachments
+            for attachment in course.attachments.all():
+                if attachment.file:
+                    attachment.file.delete(save=False)
+                attachment.delete()
 
-    serializer = CourseSerializer(course, data=data, partial=True)
+    # Don't include attachments in serializer data if not provided
+    serializer_data = {k: v for k, v in data.items() if k != 'attachments' or 'attachments' in request.data}
+    
+    serializer = CourseSerializer(course, data=serializer_data, partial=True)
     if serializer.is_valid():
         course = serializer.save()
 
@@ -90,7 +114,7 @@ def update_course(request, slug):
             course.og_image = request.FILES["og_image"]
             course.save()
 
-        # Upload new attachment files
+        # Upload new attachment files (always append, don't replace existing)
         for file in request.FILES.getlist("attachment_files"):
             CourseAttachment.objects.create(course=course, file=file, description="")
 
@@ -117,4 +141,3 @@ def delete_course(request, slug):
 def course_dropdown(request):
     courses = Course.objects.all().values('id', 'name')
     return Response(courses)
-

@@ -13,6 +13,7 @@ class Course(models.Model):
     level = models.ForeignKey(Level, on_delete=models.SET_NULL, null=True, blank=True, related_name='courses')
     disciplines = models.ManyToManyField(Discipline, blank=True, related_name='courses')
     short_description = models.TextField(blank=True)
+    long_description = models.TextField(blank=True)
     outcome = models.TextField(blank=True)
     eligibility = models.TextField(blank=True)
     curriculum = models.TextField(blank=True)
