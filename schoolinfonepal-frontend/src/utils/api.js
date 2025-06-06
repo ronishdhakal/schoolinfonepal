@@ -278,3 +278,146 @@ export const deleteUniversity = async (slug) => {
   }
   return res.json()
 }
+
+// ========================
+// 📢 Advertisement APIs
+// ========================
+
+export const fetchAdvertisements = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/ads/`)
+  Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]))
+  const res = await fetch(url)
+  return res.json()
+}
+
+export const fetchAdvertisementById = async (id) => {
+  const headers = getAuthHeaders()
+  const res = await fetch(`${API_BASE_URL}/ads/${id}/`, {
+    headers,
+  })
+  return res.json()
+}
+
+// ---- CREATE ADVERTISEMENT ----
+export const createAdvertisement = async (formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/ads/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create failed")
+  }
+  return res.json()
+}
+
+// ---- UPDATE ADVERTISEMENT ----
+export const updateAdvertisement = async (id, formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/ads/${id}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+// ---- DELETE ADVERTISEMENT ----
+export const deleteAdvertisement = async (id) => {
+  const headers = getAuthHeaders()
+  const res = await fetch(`${API_BASE_URL}/ads/${id}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    throw new Error("Delete failed")
+  }
+  return res.json()
+}
+
+// ========================
+// 📚 Discipline APIs
+// ========================
+
+export const fetchDisciplines = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/disciplines/`)
+  Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]))
+  const res = await fetch(url)
+  return res.json()
+}
+
+export const fetchDisciplineBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE_URL}/disciplines/${slug}/`)
+  return res.json()
+}
+
+// ---- CREATE DISCIPLINE ----
+export const createDiscipline = async (formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/disciplines/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create failed")
+  }
+  return res.json()
+}
+
+// ---- UPDATE DISCIPLINE ----
+export const updateDiscipline = async (slug, formData) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/disciplines/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+// ---- DELETE DISCIPLINE ----
+export const deleteDiscipline = async (slug) => {
+  const headers = await getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/disciplines/${slug}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    throw new Error("Delete failed")
+  }
+  return res.json()
+}
