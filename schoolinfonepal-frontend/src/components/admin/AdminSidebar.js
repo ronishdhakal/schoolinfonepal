@@ -6,6 +6,7 @@ const navItems = [
   { name: "Schools", path: "/admin/schools" },
   { name: "Courses", path: "/admin/courses" },
   { name: "Universities", path: "/admin/universities" },
+  { name: "Inquiries", path: "/admin/inquiries" },
   { name: "Disciplines", path: "/admin/disciplines" },
   { name: "Advertisements", path: "/admin/advertisements" },
   { name: "Events", path: "/admin/events" },

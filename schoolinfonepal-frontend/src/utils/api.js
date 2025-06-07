@@ -111,6 +111,104 @@ export const fetchDisciplinesDropdown = () => get("/disciplines/dropdown/")
 export const fetchSchoolsDropdown = () => get("/schools/dropdown/")
 
 // ========================
+// 📧 Inquiry APIs (Admin)
+// ========================
+
+export const fetchAdminInquiries = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/inquiries/admin/inquiries/`)
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+      url.searchParams.append(key, params[key])
+    }
+  })
+
+  const headers = getAuthHeaders()
+  const res = await fetch(url, { headers })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Failed to fetch inquiries")
+  }
+  return res.json()
+}
+
+export const fetchAdminPreRegistrations = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/inquiries/admin/pre-registrations/`)
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+      url.searchParams.append(key, params[key])
+    }
+  })
+
+  const headers = getAuthHeaders()
+  const res = await fetch(url, { headers })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Failed to fetch pre-registrations")
+  }
+  return res.json()
+}
+
+export const fetchInquiryAnalytics = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/inquiries/admin/analytics/`)
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+      url.searchParams.append(key, params[key])
+    }
+  })
+
+  const headers = getAuthHeaders()
+  const res = await fetch(url, { headers })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Failed to fetch analytics")
+  }
+  return res.json()
+}
+
+export const exportInquiriesCSV = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/inquiries/admin/export/`)
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+      url.searchParams.append(key, params[key])
+    }
+  })
+
+  const headers = getTokenHeaders()
+  const res = await fetch(url, { headers })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Failed to export data")
+  }
+
+  // Handle file download
+  const blob = await res.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = downloadUrl
+  link.download = `inquiries_export_${new Date().toISOString().split("T")[0]}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(downloadUrl)
+}
+
+// ========================
 // 🏫 School APIs
 // ========================
 
