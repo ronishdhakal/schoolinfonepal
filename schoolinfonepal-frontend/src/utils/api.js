@@ -1270,3 +1270,23 @@ export const fetchRecentNews = async (limit = 6) => {
   return res.json();
 };
 
+// Inquiry
+export const createInquiry = async (data) => {
+  const res = await fetch(`${API_BASE_URL}/inquiries/inquiries/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to submit inquiry");
+  return res.json();
+};
+
+export const createPreRegistrationInquiry = async (data) => {
+  const res = await fetch(`${API_BASE_URL}/inquiries/pre-registration/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to submit pre-registration");
+  return res.json();
+};

@@ -7,7 +7,7 @@ class Inquiry(models.Model):
     phone = models.CharField(max_length=20)
     address = models.CharField(max_length=255, blank=True)
     message = models.TextField(blank=True)
-    school = models.ForeignKey('school.School', on_delete=models.CASCADE, related_name='inquiries')
+    school = models.ForeignKey('school.School', on_delete=models.CASCADE, related_name='inquiries', null=True, blank=True)
     course = models.ForeignKey('course.Course', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     

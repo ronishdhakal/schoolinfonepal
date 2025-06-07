@@ -16,8 +16,8 @@ class CourseMinimalSerializer(serializers.ModelSerializer):
 class InquirySerializer(serializers.ModelSerializer):
     school = SchoolMinimalSerializer(read_only=True)
     course = CourseMinimalSerializer(read_only=True)
-    school_id = serializers.IntegerField(write_only=True, required=False)
-    course_id = serializers.IntegerField(write_only=True, required=False)
+    school_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    course_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Inquiry
@@ -30,31 +30,37 @@ class InquirySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         school_id = validated_data.pop('school_id', None)
         course_id = validated_data.pop('course_id', None)
-        
-        inquiry = Inquiry.objects.create(**validated_data)
-        
-        if school_id:
+
+        # Remove these keys if they're None (avoid passing them to .create)
+        create_kwargs = {**validated_data}
+        if 'school' in create_kwargs:
+            create_kwargs.pop('school')
+        if 'course' in create_kwargs:
+            create_kwargs.pop('course')
+
+        inquiry = Inquiry.objects.create(**create_kwargs)
+
+        # Assign school if school_id provided
+        if school_id is not None:
             try:
-                school = School.objects.get(id=school_id)
-                inquiry.school = school
+                inquiry.school = School.objects.get(id=school_id)
             except School.DoesNotExist:
-                pass
-                
-        if course_id:
+                inquiry.school = None
+        # Assign course if course_id provided
+        if course_id is not None:
             try:
-                course = Course.objects.get(id=course_id)
-                inquiry.course = course
+                inquiry.course = Course.objects.get(id=course_id)
             except Course.DoesNotExist:
-                pass
-                
+                inquiry.course = None
+
         inquiry.save()
         return inquiry
 
 class PreRegistrationInquirySerializer(serializers.ModelSerializer):
     school = SchoolMinimalSerializer(read_only=True)
     course = CourseMinimalSerializer(read_only=True)
-    school_id = serializers.IntegerField(write_only=True, required=False)
-    course_id = serializers.IntegerField(write_only=True, required=False)
+    school_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    course_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = PreRegistrationInquiry
@@ -67,22 +73,25 @@ class PreRegistrationInquirySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         school_id = validated_data.pop('school_id', None)
         course_id = validated_data.pop('course_id', None)
-        
-        inquiry = PreRegistrationInquiry.objects.create(**validated_data)
-        
-        if school_id:
+
+        create_kwargs = {**validated_data}
+        if 'school' in create_kwargs:
+            create_kwargs.pop('school')
+        if 'course' in create_kwargs:
+            create_kwargs.pop('course')
+
+        inquiry = PreRegistrationInquiry.objects.create(**create_kwargs)
+
+        if school_id is not None:
             try:
-                school = School.objects.get(id=school_id)
-                inquiry.school = school
+                inquiry.school = School.objects.get(id=school_id)
             except School.DoesNotExist:
-                pass
-                
-        if course_id:
+                inquiry.school = None
+        if course_id is not None:
             try:
-                course = Course.objects.get(id=course_id)
-                inquiry.course = course
+                inquiry.course = Course.objects.get(id=course_id)
             except Course.DoesNotExist:
-                pass
-                
+                inquiry.course = None
+
         inquiry.save()
         return inquiry

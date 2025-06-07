@@ -46,9 +46,11 @@ class UniversitySerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 class CourseSerializer(serializers.ModelSerializer):
+    university_name = serializers.CharField(source="university.name", read_only=True)
+
     class Meta:
         model = Course
-        fields = ['id', 'name']
+        fields = ['id', 'university_name']
 
 class SchoolPhoneSerializer(serializers.ModelSerializer):
     class Meta:
@@ -106,6 +108,7 @@ class SchoolMessageSerializer(serializers.ModelSerializer):
 class SchoolCourseSerializer(serializers.ModelSerializer):
     course = CourseSerializer(read_only=True)
     course_id = serializers.IntegerField(write_only=True)
+    
 
     class Meta:
         model = SchoolCourse

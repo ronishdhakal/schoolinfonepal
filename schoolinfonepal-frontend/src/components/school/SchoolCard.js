@@ -1,8 +1,8 @@
-import Image from "next/image"
-import Link from "next/link"
-import { CheckCircle, MapPin, Calendar, ExternalLink, Star } from "lucide-react"
+import Image from "next/image";
+import Link from "next/link";
+import { CheckCircle, MapPin, Calendar, ExternalLink, Star } from "lucide-react";
 
-export default function SchoolCard({ school }) {
+export default function SchoolCard({ school, onApply }) {
   return (
     <div className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
       {/* Cover Photo */}
@@ -121,15 +121,24 @@ export default function SchoolCard({ school }) {
           )}
         </div>
 
-        {/* Action Button */}
-        <Link
-          href={`/school/${school.slug}`}
-          className="inline-flex items-center justify-center w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm font-medium group"
-        >
-          View Details
-          <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Link
+            href={`/school/${school.slug}`}
+            className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm font-medium group"
+          >
+            View Details
+            <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+          <button
+            onClick={() => onApply && onApply(school)}
+            className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 text-sm font-medium"
+            type="button"
+          >
+            Apply Now
+          </button>
+        </div>
       </div>
     </div>
-  )
+  );
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import SchoolFilters from "@/components/school/SchoolFilters";
 import SchoolCard from "@/components/school/SchoolCard";
 import Pagination from "@/components/common/Pagination";
+import InquiryModal from "@/components/common/InquiryModal";
 import { fetchSchools } from "@/utils/api";
 
 const PAGE_SIZE = 12;
@@ -23,6 +24,10 @@ export default function SchoolListPage() {
     count: 0,
   });
   const [loading, setLoading] = useState(true);
+
+  // Modal state (lifted up)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState(null);
 
   // Reset to page 1 if filters change
   useEffect(() => {
@@ -44,6 +49,12 @@ export default function SchoolListPage() {
     // eslint-disable-next-line
   }, [filters, pagination.page]);
 
+  // Handler for Apply button
+  function handleApply(school) {
+    setSelectedSchool(school);
+    setModalOpen(true);
+  }
+
   return (
     <>
       <Header />
@@ -60,7 +71,13 @@ export default function SchoolListPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {!loading &&
-            schools.map((school) => <SchoolCard key={school.id} school={school} />)}
+            schools.map((school) => (
+              <SchoolCard
+                key={school.id}
+                school={school}
+                onApply={handleApply}
+              />
+            ))}
         </div>
 
         {/* Pagination */}
@@ -72,6 +89,15 @@ export default function SchoolListPage() {
             onPageChange={(page) =>
               setPagination((prev) => ({ ...prev, page }))
             }
+          />
+        )}
+
+        {/* Inquiry Modal rendered at page level */}
+        {modalOpen && selectedSchool && (
+          <InquiryModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            school={{ id: selectedSchool.id, name: selectedSchool.name }}
           />
         )}
       </main>
