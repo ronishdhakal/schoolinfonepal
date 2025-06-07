@@ -26,7 +26,7 @@ const SchoolCourses = ({ formData, setFormData }) => {
   const addCourse = () => {
     setFormData((prev) => ({
       ...prev,
-      school_courses: [...(prev.school_courses || []), { course: "", fee: "", status: "Open", admin_open: true }],
+      school_courses: [...(prev.school_courses || []), { course_id: "", fee: "", status: "Open", admin_open: true }],
     }))
   }
 
@@ -64,8 +64,8 @@ const SchoolCourses = ({ formData, setFormData }) => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
                     <select
-                      value={schoolCourse.course || ""}
-                      onChange={(e) => handleCourseChange(index, "course", e.target.value)}
+                      value={schoolCourse.course_id || ""}
+                      onChange={(e) => handleCourseChange(index, "course_id", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Course</option>
@@ -123,9 +123,9 @@ const SchoolCourses = ({ formData, setFormData }) => {
                   </div>
                 </div>
 
-                {schoolCourse.course && (
+                {schoolCourse.course_id && (
                   <div className="mt-2">
-                    <p className="text-sm text-gray-600">Selected: {getCourseName(schoolCourse.course)}</p>
+                    <p className="text-sm text-gray-600">Selected: {getCourseName(schoolCourse.course_id)}</p>
                   </div>
                 )}
               </div>

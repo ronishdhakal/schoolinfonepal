@@ -18,13 +18,33 @@ export async function loginSuperadmin(email, password) {
     throw new Error(error?.detail || "Login failed")
   }
 
-  return res.json() // { access, refresh, role, ... }
+  return res.json()
 }
 
-export function saveAuthToken(access, refresh) {
+export async function login(email, password) {
+  const res = await fetch(`${API_BASE_URL}/auth/login/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error?.detail || "Login failed")
+  }
+
+  return res.json()
+}
+
+export function saveAuthToken(access, refresh, userData = null) {
   if (typeof window !== "undefined") {
     localStorage.setItem("access", access)
     localStorage.setItem("refresh", refresh)
+    if (userData) {
+      localStorage.setItem("user", JSON.stringify(userData))
+    }
   }
 }
 
@@ -35,16 +55,44 @@ export function getAuthToken() {
   return null
 }
 
-// ✅ Simple: only gets the current token
+export function getUserData() {
+  if (typeof window !== "undefined") {
+    const userData = localStorage.getItem("user")
+    return userData ? JSON.parse(userData) : null
+  }
+  return null
+}
+
+// ✅ FIXED: Proper auth headers function
 export function getAuthHeaders() {
   const token = getAuthToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  return token
+    ? {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      }
+    : {
+        "Content-Type": "application/json",
+      }
+}
+
+// ✅ FIXED: Separate function for FormData requests
+export function getTokenHeaders() {
+  const token = getAuthToken()
+  return token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {}
 }
 
 export function logout() {
-  localStorage.removeItem("access")
-  localStorage.removeItem("refresh")
-  window.location.href = "/login"
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("access")
+    localStorage.removeItem("refresh")
+    localStorage.removeItem("user")
+    window.location.href = "/login"
+  }
 }
 
 // ========================
@@ -66,13 +114,6 @@ export const fetchSchoolsDropdown = () => get("/schools/dropdown/")
 // 🏫 School APIs
 // ========================
 
-// Helper: async headers for FormData requests (no Content-Type)
-async function getTokenHeaders() {
-  const headers = await getAuthHeaders()
-  if (headers["Content-Type"]) delete headers["Content-Type"]
-  return headers
-}
-
 export const fetchSchools = async (params = {}) => {
   const url = new URL(`${API_BASE_URL}/schools/`)
   Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]))
@@ -87,7 +128,7 @@ export const fetchSchoolBySlug = async (slug) => {
 
 // ---- CREATE SCHOOL ----
 export const createSchool = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/schools/create/`, {
     method: "POST",
     headers,
@@ -107,7 +148,7 @@ export const createSchool = async (formData) => {
 
 // ---- UPDATE SCHOOL ----
 export const updateSchool = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/schools/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -127,7 +168,7 @@ export const updateSchool = async (slug, formData) => {
 
 // ---- DELETE SCHOOL ----
 export const deleteSchool = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/schools/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -135,6 +176,63 @@ export const deleteSchool = async (slug) => {
 
   if (!res.ok) {
     throw new Error("Delete failed")
+  }
+  return res.json()
+}
+
+// ========================
+// 🏫 School Dashboard APIs
+// ========================
+
+// ✅ FIXED: Correct endpoint for school own profile
+export const fetchSchoolOwnProfile = async () => {
+  const headers = getAuthHeaders()
+  const res = await fetch(`${API_BASE_URL}/schools/me/`, {
+    headers,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Failed to fetch profile")
+  }
+  return res.json()
+}
+
+export const updateSchoolOwnProfile = async (formData) => {
+  const headers = getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/schools/me/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+// ---- SCHOOL INQUIRIES ----
+export const fetchSchoolInquiries = async () => {
+  const headers = getAuthHeaders()
+  const res = await fetch(`${API_BASE_URL}/schools/me/inquiries/`, {
+    headers,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Failed to fetch inquiries")
   }
   return res.json()
 }
@@ -157,7 +255,7 @@ export const fetchCourseBySlug = async (slug) => {
 
 // ---- CREATE COURSE ----
 export const createCourse = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/courses/create/`, {
     method: "POST",
     headers,
@@ -177,7 +275,7 @@ export const createCourse = async (formData) => {
 
 // ---- UPDATE COURSE ----
 export const updateCourse = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/courses/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -197,7 +295,7 @@ export const updateCourse = async (slug, formData) => {
 
 // ---- DELETE COURSE ----
 export const deleteCourse = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/courses/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -227,7 +325,7 @@ export const fetchUniversityBySlug = async (slug) => {
 
 // ---- CREATE UNIVERSITY ----
 export const createUniversity = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/universities/create/`, {
     method: "POST",
     headers,
@@ -247,7 +345,7 @@ export const createUniversity = async (formData) => {
 
 // ---- UPDATE UNIVERSITY ----
 export const updateUniversity = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/universities/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -267,7 +365,7 @@ export const updateUniversity = async (slug, formData) => {
 
 // ---- DELETE UNIVERSITY ----
 export const deleteUniversity = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/universities/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -300,7 +398,7 @@ export const fetchAdvertisementById = async (id) => {
 
 // ---- CREATE ADVERTISEMENT ----
 export const createAdvertisement = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/ads/create/`, {
     method: "POST",
     headers,
@@ -320,7 +418,7 @@ export const createAdvertisement = async (formData) => {
 
 // ---- UPDATE ADVERTISEMENT ----
 export const updateAdvertisement = async (id, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/ads/${id}/update/`, {
     method: "PATCH",
     headers,
@@ -370,7 +468,7 @@ export const fetchDisciplineBySlug = async (slug) => {
 
 // ---- CREATE DISCIPLINE ----
 export const createDiscipline = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/disciplines/create/`, {
     method: "POST",
     headers,
@@ -390,7 +488,7 @@ export const createDiscipline = async (formData) => {
 
 // ---- UPDATE DISCIPLINE ----
 export const updateDiscipline = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/disciplines/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -410,7 +508,7 @@ export const updateDiscipline = async (slug, formData) => {
 
 // ---- DELETE DISCIPLINE ----
 export const deleteDiscipline = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/disciplines/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -440,7 +538,7 @@ export const fetchEventBySlug = async (slug) => {
 
 // ---- CREATE EVENT ----
 export const createEvent = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/events/create/`, {
     method: "POST",
     headers,
@@ -460,7 +558,7 @@ export const createEvent = async (formData) => {
 
 // ---- UPDATE EVENT ----
 export const updateEvent = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/events/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -480,7 +578,7 @@ export const updateEvent = async (slug, formData) => {
 
 // ---- DELETE EVENT ----
 export const deleteEvent = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/events/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -510,7 +608,7 @@ export const fetchInformationBySlug = async (slug) => {
 
 // ---- CREATE INFORMATION ----
 export const createInformation = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/information/create/`, {
     method: "POST",
     headers,
@@ -530,7 +628,7 @@ export const createInformation = async (formData) => {
 
 // ---- UPDATE INFORMATION ----
 export const updateInformation = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/information/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -550,7 +648,7 @@ export const updateInformation = async (slug, formData) => {
 
 // ---- DELETE INFORMATION ----
 export const deleteInformation = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/information/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -583,10 +681,7 @@ export const fetchInformationCategoryBySlug = async (slug) => {
 }
 
 export const createInformationCategory = async (categoryData) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-    "Content-Type": "application/json",
-  }
+  const headers = getAuthHeaders()
 
   const res = await fetch(`${API_BASE_URL}/information/categories/create/`, {
     method: "POST",
@@ -606,10 +701,7 @@ export const createInformationCategory = async (categoryData) => {
 }
 
 export const updateInformationCategory = async (slug, categoryData) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-    "Content-Type": "application/json",
-  }
+  const headers = getAuthHeaders()
 
   const res = await fetch(`${API_BASE_URL}/information/categories/${slug}/update/`, {
     method: "PATCH",
@@ -629,7 +721,7 @@ export const updateInformationCategory = async (slug, categoryData) => {
 }
 
 export const deleteInformationCategory = async (slug) => {
-  const headers = await getAuthHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/information/categories/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -659,7 +751,7 @@ export const fetchScholarshipBySlug = async (slug) => {
 
 // ---- CREATE SCHOLARSHIP ----
 export const createScholarship = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/scholarships/create/`, {
     method: "POST",
     headers,
@@ -679,7 +771,7 @@ export const createScholarship = async (formData) => {
 
 // ---- UPDATE SCHOLARSHIP ----
 export const updateScholarship = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/scholarships/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -699,7 +791,7 @@ export const updateScholarship = async (slug, formData) => {
 
 // ---- DELETE SCHOLARSHIP ----
 export const deleteScholarship = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/scholarships/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -729,7 +821,7 @@ export const fetchDistrictBySlug = async (slug) => {
 
 // ---- CREATE DISTRICT ----
 export const createDistrict = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/districts/create/`, {
     method: "POST",
     headers,
@@ -749,7 +841,7 @@ export const createDistrict = async (formData) => {
 
 // ---- UPDATE DISTRICT ----
 export const updateDistrict = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/districts/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -769,7 +861,7 @@ export const updateDistrict = async (slug, formData) => {
 
 // ---- DELETE DISTRICT ----
 export const deleteDistrict = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/districts/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -799,7 +891,7 @@ export const fetchFacilityBySlug = async (slug) => {
 
 // ---- CREATE FACILITY ----
 export const createFacility = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/facilities/create/`, {
     method: "POST",
     headers,
@@ -819,7 +911,7 @@ export const createFacility = async (formData) => {
 
 // ---- UPDATE FACILITY ----
 export const updateFacility = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/facilities/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -839,7 +931,7 @@ export const updateFacility = async (slug, formData) => {
 
 // ---- DELETE FACILITY ----
 export const deleteFacility = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/facilities/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -869,7 +961,7 @@ export const fetchLevelBySlug = async (slug) => {
 
 // ---- CREATE LEVEL ----
 export const createLevel = async (formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/levels/create/`, {
     method: "POST",
     headers,
@@ -889,7 +981,7 @@ export const createLevel = async (formData) => {
 
 // ---- UPDATE LEVEL ----
 export const updateLevel = async (slug, formData) => {
-  const headers = await getTokenHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/levels/${slug}/update/`, {
     method: "PATCH",
     headers,
@@ -909,7 +1001,7 @@ export const updateLevel = async (slug, formData) => {
 
 // ---- DELETE LEVEL ----
 export const deleteLevel = async (slug) => {
-  const headers = await getTokenHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/levels/${slug}/delete/`, {
     method: "DELETE",
     headers,
@@ -939,10 +1031,7 @@ export const fetchTypeBySlug = async (slug) => {
 
 // ---- CREATE TYPE ----
 export const createType = async (formData) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-    "Content-Type": "application/json",
-  }
+  const headers = getAuthHeaders()
 
   const res = await fetch(`${API_BASE_URL}/types/create/`, {
     method: "POST",
@@ -963,10 +1052,7 @@ export const createType = async (formData) => {
 
 // ---- UPDATE TYPE ----
 export const updateType = async (slug, formData) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-    "Content-Type": "application/json",
-  }
+  const headers = getAuthHeaders()
 
   const res = await fetch(`${API_BASE_URL}/types/${slug}/update/`, {
     method: "PATCH",
@@ -987,7 +1073,7 @@ export const updateType = async (slug, formData) => {
 
 // ---- DELETE TYPE ----
 export const deleteType = async (slug) => {
-  const headers = await getAuthHeaders()
+  const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/types/${slug}/delete/`, {
     method: "DELETE",
     headers,

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { loginSuperadmin, saveAuthToken } from "../utils/api";
+import { login, saveAuthToken } from "../utils/api"; // Changed from loginSuperadmin to login
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "", rememberMe: false });
@@ -25,17 +25,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await loginSuperadmin(form.email, form.password);
+      const data = await login(form.email, form.password); // Changed from loginSuperadmin
       console.log("Login successful:", data);
 
-      // ✅ Save both tokens here
-      saveAuthToken(data.access, data.refresh);
+      // ✅ Save tokens and user data
+      const userData = {
+        role: data.role,
+        email: form.email,
+        // Add any other user data from the response
+      };
+      
+      saveAuthToken(data.access, data.refresh, userData);
 
       setTimeout(() => {
         if (data.role === "admin") {
           window.location.href = "/admin/dashboard";
         } else if (data.role === "school") {
-          window.location.href = "/dashboard/school";
+          window.location.href = "/dashboard"; // Changed from "/dashboard/school"
         } else {
           setError("You are not authorized to access the dashboard.");
           setLoading(false);
@@ -60,7 +66,7 @@ export default function LoginPage() {
             <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
               <span className="text-gray-600 text-xl">📚</span>
             </div>
-            <h1 className="text-2xl font-bold text-blue-600 tracking-tight">Admin Panel</h1>
+            <h1 className="text-2xl font-bold text-blue-600 tracking-tight">School Info Nepal</h1>
           </div>
         </div>
 
@@ -81,7 +87,7 @@ export default function LoginPage() {
               onChange={handleChange}
               required
               className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
-              placeholder="admin@example.com"
+              placeholder="your@email.com"
             />
           </div>
 

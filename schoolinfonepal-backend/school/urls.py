@@ -1,27 +1,21 @@
 from django.urls import path
-from .views import (
-    SchoolListView,
-    SchoolDetailView,
-    create_school,
-    update_school,
-    delete_school,
-    SchoolOwnDetailView,
-    school_own_update,
-    school_inquiries,
-    school_dropdown,
-)
+from . import views
 
 urlpatterns = [
-    path('', SchoolListView.as_view(), name='school-list'),                         # /api/schools/
-    path('create/', create_school, name='school-create'),                           # /api/schools/create/
-    path("dropdown/", school_dropdown),
+    # Public endpoints
+    path('', views.SchoolListView.as_view(), name='school-list'),
+    path('dropdown/', views.school_dropdown, name='school-dropdown'),
 
-    path('<slug:slug>/', SchoolDetailView.as_view(), name='school-detail'),         # /api/schools/<slug>/
-    path('<slug:slug>/update/', update_school, name='school-update'),               # /api/schools/<slug>/update/
-    path('<slug:slug>/delete/', delete_school, name='school-delete'),               # /api/schools/<slug>/delete/
-    
-    # Dashboard-only views for schools
-    path('me/', SchoolOwnDetailView.as_view(), name='school-own-detail'),           # /api/schools/me/
-    path('me/update/', school_own_update, name='school-own-update'),                # /api/schools/me/update/
-    path('me/inquiries/', school_inquiries, name='school-inquiries'),               # /api/schools/me/inquiries/
+    # School dashboard endpoints (fixed first!)
+    path('me/', views.school_own_detail, name='school-own-detail'),
+    path('me/update/', views.school_own_update, name='school-own-update'),
+    path('me/inquiries/', views.school_inquiries, name='school-inquiries'),
+
+    # Admin endpoints
+    path('create/', views.create_school, name='create-school'),
+    path('<slug:slug>/update/', views.update_school, name='update-school'),
+    path('<slug:slug>/delete/', views.delete_school, name='delete-school'),
+
+    # Public detail endpoint last!
+    path('<slug:slug>/', views.SchoolDetailView.as_view(), name='school-detail'),
 ]

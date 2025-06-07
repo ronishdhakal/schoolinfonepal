@@ -13,6 +13,8 @@ from .serializers import SchoolSerializer
 from inquiry.models import Inquiry, PreRegistrationInquiry
 from inquiry.serializers import InquirySerializer, PreRegistrationInquirySerializer
 from core.filters import SchoolFilter
+from facility.models import Facility
+from university.models import University
 import json
 import os
 
@@ -59,6 +61,15 @@ class IsSchoolOwnerOrAdmin(IsAuthenticated):
 
         return False
 
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == 'admin':
+            return True
+        
+        if request.user.role == 'school' and hasattr(request.user, 'school'):
+            return request.user.school == obj
+            
+        return False
+
 class SchoolListView(ListAPIView):
     queryset = School.objects.all().order_by('-priority', 'name')
     serializer_class = SchoolSerializer
@@ -80,6 +91,16 @@ class SchoolDetailView(RetrieveAPIView):
 @permission_classes([IsAdminUser])
 @parser_classes([MultiPartParser, FormParser])
 def create_school(request):
+    print("CREATE SCHOOL - Raw request data:")
+    print(f"Request method: {request.method}")
+    print(f"Content type: {request.content_type}")
+    
+    for key, value in request.data.items():
+        if key not in ['logo', 'cover_photo', 'og_image']:
+            if key in ['facilities', 'universities']:
+                print(f"{key}: {request.data.getlist(key)} (getlist)")
+            print(f"{key}: {value}")
+    
     data = request.data.dict()
 
     # Handle boolean fields
@@ -93,32 +114,52 @@ def create_school(request):
         "phones", "emails", "gallery", "brochures", "social_media",
         "faqs", "messages", "school_courses"
     ]:
-        data[field] = safe_json_loads(request.data.get(field, []))
-
-    # Handle M2M fields
-    facilities = request.data.getlist("facilities")
-    universities = request.data.getlist("universities")
-    data["facilities"] = facilities
-    data["universities"] = universities
+        if field in request.data:
+            data[field] = safe_json_loads(request.data.get(field, []))
+            print(f"Processed {field}: {data[field]}")
 
     # Use admin_email as the main email for the School
     data["admin_email"] = request.data.get("admin_email", "")
 
-    serializer = SchoolSerializer(data=data, context={'request': request})
-    if serializer.is_valid():
-        school = serializer.save()
+    print(f"Create school data: {data}")
 
-        # Handle file uploads
-        _handle_file_uploads(school, request)
+    # ✅ FIXED: Use transaction to ensure all operations succeed together
+    with transaction.atomic():
+        serializer = SchoolSerializer(data=data, context={'request': request})
+        if serializer.is_valid():
+            school = serializer.save()
+            print(f"School created with ID: {school.id}")
 
-        return Response(SchoolSerializer(school).data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # ✅ FIXED: Handle M2M relationships AFTER school creation
+            _handle_m2m_relationships(school, request)
+            _handle_file_uploads(school, request)
+
+            # Verify the relationships were set
+            print(f"Final school facilities: {[f.name for f in school.facilities.all()]}")
+            print(f"Final school universities: {[u.name for u in school.universities.all()]}")
+
+            return Response(SchoolSerializer(school, context={'request': request}).data, status=status.HTTP_201_CREATED)
+        
+        print(f"Create school errors: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminUser])
 @parser_classes([MultiPartParser, FormParser])
 def update_school(request, slug):
+    print("UPDATE SCHOOL - Raw request data:")
+    print(f"Request method: {request.method}")
+    print(f"Content type: {request.content_type}")
+    
+    for key, value in request.data.items():
+        if key not in ['logo', 'cover_photo', 'og_image']:
+            if key in ['facilities', 'universities']:
+                print(f"{key}: {request.data.getlist(key)} (getlist)")
+            print(f"{key}: {value}")
+    
     school = get_object_or_404(School, slug=slug)
+    print(f"Updating school: {school.name} (ID: {school.id})")
+    
     data = request.data.dict()
 
     # Handle boolean fields
@@ -134,26 +175,182 @@ def update_school(request, slug):
     ]:
         if field in request.data:
             data[field] = safe_json_loads(request.data.get(field, []))
-
-    # Handle M2M fields
-    if "facilities" in request.data:
-        data["facilities"] = request.data.getlist("facilities")
-    if "universities" in request.data:
-        data["universities"] = request.data.getlist("universities")
+            print(f"Processed {field}: {data[field]}")
 
     # Use admin_email as the main email for the School
     if "admin_email" in request.data:
         data["admin_email"] = request.data.get("admin_email")
 
-    serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
-    if serializer.is_valid():
-        school = serializer.save()
+    print(f"Update school data: {data}")
 
-        # Handle file uploads
-        _handle_file_uploads(school, request, is_update=True)
+    # ✅ FIXED: Use transaction to ensure all operations succeed together
+    with transaction.atomic():
+        serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            school = serializer.save()
+            print(f"School updated: {school.name}")
 
-        return Response(SchoolSerializer(school).data, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # ✅ FIXED: Handle M2M relationships AFTER school update
+            _handle_m2m_relationships(school, request)
+            _handle_file_uploads(school, request, is_update=True)
+
+            # Verify the relationships were set
+            print(f"Final school facilities: {[f.name for f in school.facilities.all()]}")
+            print(f"Final school universities: {[u.name for u in school.universities.all()]}")
+
+            return Response(SchoolSerializer(school, context={'request': request}).data, status=status.HTTP_200_OK)
+        
+        print(f"Update school errors: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsSchoolOwnerOrAdmin])
+def school_own_detail(request):
+    """Get school's own profile"""
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+    school = request.user.school
+    serializer = SchoolSerializer(school, context={'request': request})
+    return Response(serializer.data)
+
+@api_view(["PATCH"])
+@permission_classes([IsSchoolOwnerOrAdmin])
+@parser_classes([MultiPartParser, FormParser])
+def school_own_update(request):
+    """Allow schools to update their own profile"""
+    print("SCHOOL OWN UPDATE - Raw request data:")
+    print(f"Request method: {request.method}")
+    print(f"Content type: {request.content_type}")
+    
+    for key, value in request.data.items():
+        if key not in ['logo', 'cover_photo', 'og_image']:
+            if key in ['facilities', 'universities']:
+                print(f"{key}: {request.data.getlist(key)} (getlist)")
+            print(f"{key}: {value}")
+    
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+    school = request.user.school
+    print(f"Updating school: {school.name} (ID: {school.id})")
+    
+    data = request.data.dict()
+
+    # Handle boolean fields
+    if "verification" in data:
+        data["verification"] = data["verification"].lower() == "true"
+    if "featured" in data:
+        data["featured"] = data["featured"].lower() == "true"
+
+    # Handle JSON fields only if provided
+    for field in [
+        "phones", "emails", "gallery", "brochures", "social_media",
+        "faqs", "messages", "school_courses"
+    ]:
+        if field in request.data:
+            data[field] = safe_json_loads(request.data.get(field, []))
+            print(f"Processed {field}: {data[field]}")
+
+    # Use admin_email as the main email for the School (for dashboard edit)
+    if "admin_email" in request.data:
+        data["admin_email"] = request.data.get("admin_email")
+
+    print(f"School own update data: {data}")
+
+    # ✅ FIXED: Use transaction to ensure all operations succeed together
+    with transaction.atomic():
+        serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            school = serializer.save()
+            print(f"School updated: {school.name}")
+
+            # ✅ FIXED: Handle M2M relationships AFTER school update
+            _handle_m2m_relationships(school, request)
+            _handle_file_uploads(school, request, is_update=True)
+
+            # Verify the relationships were set
+            print(f"Final school facilities: {[f.name for f in school.facilities.all()]}")
+            print(f"Final school universities: {[u.name for u in school.universities.all()]}")
+
+            return Response(SchoolSerializer(school, context={'request': request}).data, status=status.HTTP_200_OK)
+        
+        print(f"School own update errors: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def _handle_m2m_relationships(school, request):
+    """Handle many-to-many relationships for facilities and universities"""
+    
+    print(f"=== M2M RELATIONSHIPS DEBUG ===")
+    print(f"Request data keys: {list(request.data.keys())}")
+    print(f"Request POST keys: {list(request.POST.keys())}")
+    
+    # ✅ CRITICAL FIX: Always process M2M relationships if the keys exist
+    # Handle facilities
+    if "facilities" in request.data or "facilities" in request.POST:
+        # Try both request.data and request.POST
+        facility_ids = request.data.getlist("facilities") or request.POST.getlist("facilities")
+        print(f"Raw facilities from request: {facility_ids}")
+        print(f"Facilities type: {type(facility_ids)}")
+        
+        # Convert to integers and filter valid IDs
+        valid_facility_ids = []
+        for fid in facility_ids:
+            try:
+                # ✅ CRITICAL FIX: Skip empty strings (which indicate "clear all")
+                if fid and str(fid).strip() and str(fid).strip() != "":
+                    valid_facility_ids.append(int(fid))
+                    print(f"Added valid facility ID: {fid}")
+            except (ValueError, TypeError) as e:
+                print(f"Invalid facility ID: {fid}, error: {e}")
+        
+        print(f"Valid facility IDs: {valid_facility_ids}")
+        
+        # ✅ CRITICAL FIX: Always set the relationships, even if empty
+        if valid_facility_ids:
+            facilities = Facility.objects.filter(id__in=valid_facility_ids)
+            print(f"Found facilities in DB: {[f.name for f in facilities]}")
+            school.facilities.set(facilities)
+            print(f"Set facilities for school: {[f.name for f in school.facilities.all()]}")
+        else:
+            school.facilities.clear()
+            print("Cleared all facilities")
+    else:
+        print("No facilities data found in request")
+    
+    # Handle universities
+    if "universities" in request.data or "universities" in request.POST:
+        # Try both request.data and request.POST
+        university_ids = request.data.getlist("universities") or request.POST.getlist("universities")
+        print(f"Raw universities from request: {university_ids}")
+        print(f"Universities type: {type(university_ids)}")
+        
+        # Convert to integers and filter valid IDs
+        valid_university_ids = []
+        for uid in university_ids:
+            try:
+                # ✅ CRITICAL FIX: Skip empty strings (which indicate "clear all")
+                if uid and str(uid).strip() and str(uid).strip() != "":
+                    valid_university_ids.append(int(uid))
+                    print(f"Added valid university ID: {uid}")
+            except (ValueError, TypeError) as e:
+                print(f"Invalid university ID: {uid}, error: {e}")
+        
+        print(f"Valid university IDs: {valid_university_ids}")
+        
+        # ✅ CRITICAL FIX: Always set the relationships, even if empty
+        if valid_university_ids:
+            universities = University.objects.filter(id__in=valid_university_ids)
+            print(f"Found universities in DB: {[u.name for u in universities]}")
+            school.universities.set(universities)
+            print(f"Set universities for school: {[u.name for u in school.universities.all()]}")
+        else:
+            school.universities.clear()
+            print("Cleared all universities")
+    else:
+        print("No universities data found in request")
+    
+    print(f"=== END M2M DEBUG ===")
 
 def _handle_file_uploads(school, request, is_update=False):
     """Handle all file uploads for school"""
@@ -257,61 +454,6 @@ def delete_school(request, slug):
     # User will be deleted automatically by the signal
     school.delete()
     return Response({"message": "School deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-
-# Dashboard-only views for schools
-class SchoolOwnDetailView(RetrieveAPIView):
-    serializer_class = SchoolSerializer
-    permission_classes = [IsSchoolOwnerOrAdmin]
-
-    def get_object(self):
-        if self.request.user.role == 'admin':
-            return None
-        return self.request.user.school
-
-@api_view(["PATCH"])
-@permission_classes([IsSchoolOwnerOrAdmin])
-@parser_classes([MultiPartParser, FormParser])
-def school_own_update(request):
-    """Allow schools to update their own profile"""
-    if request.user.role != 'school' or not hasattr(request.user, 'school'):
-        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
-
-    school = request.user.school
-    data = request.data.dict()
-
-    # Handle boolean fields
-    if "verification" in data:
-        data["verification"] = data["verification"].lower() == "true"
-    if "featured" in data:
-        data["featured"] = data["featured"].lower() == "true"
-
-    # Handle JSON fields only if provided
-    for field in [
-        "phones", "emails", "gallery", "brochures", "social_media",
-        "faqs", "messages", "school_courses"
-    ]:
-        if field in request.data:
-            data[field] = safe_json_loads(request.data.get(field, []))
-
-    # Handle M2M fields
-    if "facilities" in request.data:
-        data["facilities"] = request.data.getlist("facilities")
-    if "universities" in request.data:
-        data["universities"] = request.data.getlist("universities")
-
-    # Use admin_email as the main email for the School (for dashboard edit)
-    if "admin_email" in request.data:
-        data["admin_email"] = request.data.get("admin_email")
-
-    serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
-    if serializer.is_valid():
-        school = serializer.save()
-
-        # Handle file uploads
-        _handle_file_uploads(school, request, is_update=True)
-
-        return Response(SchoolSerializer(school).data, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @permission_classes([IsSchoolOwnerOrAdmin])

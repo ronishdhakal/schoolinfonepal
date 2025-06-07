@@ -10,7 +10,7 @@ class InquiryAdmin(admin.ModelAdmin):
 
 @admin.register(PreRegistrationInquiry)
 class PreRegistrationInquiryAdmin(admin.ModelAdmin):
-    list_display = ('student_full_name', 'parent_name', 'phone', 'email', 'school', 'grade_or_class', 'created_at')
-    search_fields = ('student_full_name', 'parent_name', 'phone', 'email', 'message', 'grade_or_class')
+    list_display = ('full_name', 'phone', 'email', 'school', 'level', 'created_at')
+    search_fields = ('full_name', 'phone', 'email', 'message', 'level')
     list_filter = ('school',)
     readonly_fields = ('created_at',)

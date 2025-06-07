@@ -102,6 +102,18 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     if (slug) {
       fetchSchoolBySlug(slug)
         .then((data) => {
+          // ✅ FIXED: Process school_courses to use course_id format
+          const processedSchoolCourses = (data.school_courses_display || data.school_courses || []).map((sc) => ({
+            course_id: sc.course?.id || sc.course_id || sc.course,
+            fee: sc.fee || "",
+            status: sc.status || "Open",
+            admin_open: sc.admin_open !== false,
+          }))
+
+          // ✅ FIXED: Process facilities and universities to use IDs
+          const facilityIds = (data.facilities || []).map((f) => f.id)
+          const universityIds = (data.universities || []).map((u) => u.id)
+
           setFormData({
             ...data,
             phones: data.phones || [],
@@ -111,9 +123,9 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
             social_media: data.social_media || [],
             faqs: data.faqs || [],
             messages: data.messages || [],
-            school_courses: data.school_courses || [],
-            facilities: data.facilities || [],
-            universities: data.universities || [],
+            school_courses: processedSchoolCourses,
+            facilities: facilityIds,
+            universities: universityIds,
           })
           setLoading(false)
         })
@@ -194,11 +206,53 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     data.append("emails", JSON.stringify(formData.emails || []))
     data.append("social_media", JSON.stringify(formData.social_media || []))
     data.append("faqs", JSON.stringify(formData.faqs || []))
-    data.append("school_courses", JSON.stringify(formData.school_courses || []))
 
-    // M2M fields
-    ;(formData.facilities || []).forEach((id) => data.append("facilities", id))
-    ;(formData.universities || []).forEach((id) => data.append("universities", id))
+    // ✅ FIXED: Process school_courses to ensure course_id is used
+    const processedCourses = (formData.school_courses || [])
+      .filter((sc) => sc.course_id)
+      .map((sc) => ({
+        course_id: Number.parseInt(sc.course_id),
+        fee: sc.fee || "",
+        status: sc.status || "Open",
+        admin_open: sc.admin_open !== false,
+      }))
+    data.append("school_courses", JSON.stringify(processedCourses))
+
+    // ✅ FIXED: M2M fields - ALWAYS send the keys, even if empty
+    const facilityIds = Array.isArray(formData.facilities) ? formData.facilities : []
+    const universityIds = Array.isArray(formData.universities) ? formData.universities : []
+
+    // ✅ CRITICAL FIX: Always append the keys, even if arrays are empty
+    if (facilityIds.length > 0) {
+      facilityIds.forEach((id) => {
+        if (id) data.append("facilities", id)
+      })
+    } else {
+      // Send empty value to indicate "clear all facilities"
+      data.append("facilities", "")
+    }
+
+    if (universityIds.length > 0) {
+      universityIds.forEach((id) => {
+        if (id) data.append("universities", id)
+      })
+    } else {
+      // Send empty value to indicate "clear all universities"
+      data.append("universities", "")
+    }
+
+    // Debug logging
+    console.log("=== FRONTEND DEBUG ===")
+    console.log("Submitting school courses:", processedCourses)
+    console.log("Submitting facilities:", facilityIds)
+    console.log("Submitting universities:", universityIds)
+
+    // Debug FormData contents
+    console.log("=== FORMDATA CONTENTS ===")
+    for (const [key, value] of data.entries()) {
+      console.log(`${key}: ${value}`)
+    }
+    console.log("=== END FORMDATA ===")
 
     try {
       if (slug) {
