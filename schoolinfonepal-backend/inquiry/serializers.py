@@ -24,7 +24,7 @@ class InquirySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'school', 'course', 'school_id', 'course_id',
             'full_name', 'email', 'phone', 'address', 'message',
-            'created_at', 'updated_at'
+            'contacted', 'contacted_at', 'created_at'
         ]
 
     def create(self, validated_data):
@@ -61,7 +61,7 @@ class PreRegistrationInquirySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'school', 'course', 'school_id', 'course_id',
             'full_name', 'email', 'phone', 'address', 'level', 'message',
-            'created_at', 'updated_at'
+            'contacted', 'contacted_at', 'created_at'
         ]
 
     def create(self, validated_data):

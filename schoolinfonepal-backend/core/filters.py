@@ -10,12 +10,15 @@ from information.models import Information
 class SchoolFilter(django_filters.FilterSet):
     district = django_filters.CharFilter(field_name="district__slug", lookup_expr='iexact')
     university = django_filters.CharFilter(field_name="universities__slug", lookup_expr='iexact')
-    level = django_filters.CharFilter(field_name="levels__slug", lookup_expr='iexact')
+    level = django_filters.CharFilter(field_name="level__slug", lookup_expr='iexact')
     type = django_filters.CharFilter(field_name="type__slug", lookup_expr='iexact')
-    
+    featured = django_filters.BooleanFilter(field_name='featured')
+    course = django_filters.NumberFilter(field_name='school_courses__course')  # <-- new!
+
+
     class Meta:
         model = School
-        fields = ['district', 'university', 'level', 'type']
+        fields = ['district', 'university', 'level', 'type', 'featured', 'course']
 
 
 class UniversityFilter(django_filters.FilterSet):

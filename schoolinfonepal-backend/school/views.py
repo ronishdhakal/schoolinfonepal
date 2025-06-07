@@ -15,9 +15,23 @@ from inquiry.serializers import InquirySerializer, PreRegistrationInquirySeriali
 from core.filters import SchoolFilter
 from facility.models import Facility
 from university.models import University
+from django.db.models import F, Value, BooleanField, ExpressionWrapper
+
 import json
 import os
-
+from django.http import HttpResponse
+from django.db.models import Count, Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+import pandas as pd
+import io
+from datetime import datetime, timedelta
+from inquiry.models import Inquiry, PreRegistrationInquiry
+from inquiry.serializers import InquirySerializer, PreRegistrationInquirySerializer
+from django.utils import timezone
+import csv
+from core.pagination import StandardResultsSetPagination
 def safe_json_loads(val):
     """Utility: safely decode JSON or pass through lists/dicts."""
     if val in [None, "", [], {}]:
@@ -71,15 +85,33 @@ class IsSchoolOwnerOrAdmin(IsAuthenticated):
         return False
 
 class SchoolListView(ListAPIView):
-    queryset = School.objects.all().order_by('-priority', 'name')
     serializer_class = SchoolSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = SchoolFilter
+    pagination_class = StandardResultsSetPagination
     search_fields = [
         'name', 'address', 'district__name',
         'school_courses__course__name', 'universities__name', 'level__name'
     ]
+
+    def get_queryset(self):
+        # Annotate boolean fields as integer for ordering
+        return School.objects.annotate(
+            is_featured=ExpressionWrapper(F('featured'), output_field=BooleanField()),
+            is_verified=ExpressionWrapper(F('verification'), output_field=BooleanField())
+        ).order_by(
+            'priority',              # lower is higher precedence
+            '-is_featured',          # True/1 comes first
+            '-is_verified',          # True/1 comes first
+            '-updated_at'            # latest updated comes first
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 
 class SchoolDetailView(RetrieveAPIView):
     queryset = School.objects.all()
@@ -463,13 +495,285 @@ def school_inquiries(request):
         return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
     school = request.user.school
+    
+    # Get filter parameters
+    contacted = request.query_params.get('contacted')
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    search = request.query_params.get('search')
+    
+    # Base queries
     inquiries = Inquiry.objects.filter(school=school).order_by('-created_at')
     pre_registrations = PreRegistrationInquiry.objects.filter(school=school).order_by('-created_at')
+    
+    # Apply filters
+    if contacted is not None:
+        contacted_bool = contacted.lower() == 'true'
+        inquiries = inquiries.filter(contacted=contacted_bool)
+        pre_registrations = pre_registrations.filter(contacted=contacted_bool)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            inquiries = inquiries.filter(created_at__date__gte=start_date)
+            pre_registrations = pre_registrations.filter(created_at__date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            inquiries = inquiries.filter(created_at__date__lte=end_date)
+            pre_registrations = pre_registrations.filter(created_at__date__lte=end_date)
+        except ValueError:
+            pass
+    
+    if search:
+        inquiries = inquiries.filter(
+            Q(full_name__icontains=search) | 
+            Q(email__icontains=search) | 
+            Q(phone__icontains=search) |
+            Q(message__icontains=search) |
+            Q(course__name__icontains=search)
+        )
+        pre_registrations = pre_registrations.filter(
+            Q(full_name__icontains=search) | 
+            Q(email__icontains=search) | 
+            Q(phone__icontains=search) |
+            Q(message__icontains=search) |
+            Q(course__name__icontains=search)
+        )
 
     return Response({
         'inquiries': InquirySerializer(inquiries, many=True).data,
         'pre_registrations': PreRegistrationInquirySerializer(pre_registrations, many=True).data
     })
+
+@api_view(['PATCH'])
+@permission_classes([IsSchoolOwnerOrAdmin])
+def update_inquiry_contact_status(request, inquiry_id):
+    """Update contact status for an inquiry"""
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+    
+    school = request.user.school
+    
+    # Debug request data
+    print(f"Request data: {request.data}")
+    
+    # Get the contacted status from request
+    try:
+        contacted = request.data.get('contacted', False)
+        if isinstance(contacted, str):
+            contacted = contacted.lower() == 'true'
+        contacted = bool(contacted)
+        print(f"Parsed contacted value: {contacted}")
+    except Exception as e:
+        print(f"Error parsing contacted value: {e}")
+        contacted = False
+    
+    print(f"Updating inquiry {inquiry_id} contacted status to: {contacted}")
+    
+    try:
+        # Try to find regular inquiry first
+        inquiry = Inquiry.objects.get(id=inquiry_id, school=school)
+        model_type = 'inquiry'
+        print(f"Found regular inquiry: {inquiry.id}")
+    except Inquiry.DoesNotExist:
+        try:
+            # Try pre-registration if regular inquiry not found
+            inquiry = PreRegistrationInquiry.objects.get(id=inquiry_id, school=school)
+            model_type = 'pre_registration'
+            print(f"Found pre-registration inquiry: {inquiry.id}")
+        except PreRegistrationInquiry.DoesNotExist:
+            print(f"Inquiry {inquiry_id} not found for school {school.id}")
+            return Response({"error": "Inquiry not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Update contacted status
+    inquiry.contacted = contacted
+    if contacted:
+        inquiry.contacted_at = timezone.now()
+    else:
+        inquiry.contacted_at = None
+    
+    inquiry.save()
+    
+    print(f"Updated inquiry {inquiry.id} - contacted: {inquiry.contacted}, contacted_at: {inquiry.contacted_at}")
+    
+    # Return appropriate serializer based on model type
+    if model_type == 'inquiry':
+        serializer = InquirySerializer(inquiry)
+    else:
+        serializer = PreRegistrationInquirySerializer(inquiry)
+    
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsSchoolOwnerOrAdmin])
+def school_inquiries_analytics(request):
+    """Get analytics for school inquiries"""
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+    
+    school = request.user.school
+    
+    # Get date range for trends (last 30 days)
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=29)
+    
+    # Base queries
+    inquiries = Inquiry.objects.filter(school=school)
+    pre_registrations = PreRegistrationInquiry.objects.filter(school=school)
+    
+    # Total counts
+    total_inquiries = inquiries.count()
+    total_pre_registrations = pre_registrations.count()
+    
+    # Contact status counts
+    contacted_inquiries = inquiries.filter(contacted=True).count()
+    not_contacted_inquiries = total_inquiries - contacted_inquiries
+    
+    contacted_pre_registrations = pre_registrations.filter(contacted=True).count()
+    not_contacted_pre_registrations = total_pre_registrations - contacted_pre_registrations
+    
+    # Course distribution
+    course_distribution = inquiries.values('course__name').annotate(
+        count=Count('id')
+    ).order_by('-count')[:5]
+    
+    # Daily trends for the last 30 days
+    daily_data = []
+    current_date = start_date
+    
+    while current_date <= end_date:
+        daily_inquiries = inquiries.filter(created_at__date=current_date).count()
+        daily_pre_registrations = pre_registrations.filter(created_at__date=current_date).count()
+        
+        daily_data.append({
+            'date': current_date.strftime('%Y-%m-%d'),
+            'inquiries': daily_inquiries,
+            'pre_registrations': daily_pre_registrations,
+            'total': daily_inquiries + daily_pre_registrations
+        })
+        
+        current_date += timedelta(days=1)
+    
+    return Response({
+        'total_inquiries': total_inquiries,
+        'total_pre_registrations': total_pre_registrations,
+        'contacted_inquiries': contacted_inquiries,
+        'not_contacted_inquiries': not_contacted_inquiries,
+        'contacted_pre_registrations': contacted_pre_registrations,
+        'not_contacted_pre_registrations': not_contacted_pre_registrations,
+        'course_distribution': course_distribution,
+        'daily_trends': daily_data
+    })
+
+@api_view(['GET'])
+@permission_classes([IsSchoolOwnerOrAdmin])
+def export_school_inquiries(request):
+    """Export school inquiries to CSV (alternative to Excel)"""
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+    
+    school = request.user.school
+    
+    # Get parameters
+    inquiry_type = request.query_params.get('type', 'all')
+    contacted = request.query_params.get('contacted')
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    
+    # Base queries
+    inquiries_query = Inquiry.objects.filter(school=school)
+    pre_reg_query = PreRegistrationInquiry.objects.filter(school=school)
+    
+    # Apply filters
+    if contacted is not None:
+        contacted_bool = contacted.lower() == 'true'
+        inquiries_query = inquiries_query.filter(contacted=contacted_bool)
+        pre_reg_query = pre_reg_query.filter(contacted=contacted_bool)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            inquiries_query = inquiries_query.filter(created_at__date__gte=start_date)
+            pre_reg_query = pre_reg_query.filter(created_at__date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            inquiries_query = inquiries_query.filter(created_at__date__lte=end_date)
+            pre_reg_query = pre_reg_query.filter(created_at__date__lte=end_date)
+        except ValueError:
+            pass
+    
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename=school_inquiries_{datetime.now().strftime("%Y%m%d")}.csv'
+    
+    writer = csv.writer(response)
+    
+    # Export regular inquiries
+    if inquiry_type in ['all', 'inquiries']:
+        inquiries = inquiries_query.select_related('course')
+        
+        if inquiries.exists():
+            # Write header for inquiries
+            writer.writerow(['=== GENERAL INQUIRIES ==='])
+            writer.writerow([
+                'ID', 'Full Name', 'Email', 'Phone', 'Address', 'Course', 
+                'Message', 'Contacted', 'Contacted At', 'Created At'
+            ])
+            
+            # Write inquiry data
+            for inquiry in inquiries:
+                writer.writerow([
+                    inquiry.id,
+                    inquiry.full_name,
+                    inquiry.email,
+                    inquiry.phone,
+                    inquiry.address,
+                    inquiry.course.name if inquiry.course else 'N/A',
+                    inquiry.message,
+                    'Yes' if inquiry.contacted else 'No',
+                    inquiry.contacted_at.strftime('%Y-%m-%d %H:%M:%S') if inquiry.contacted_at else 'N/A',
+                    inquiry.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                ])
+            
+            writer.writerow([])  # Empty row separator
+    
+    # Export pre-registration inquiries
+    if inquiry_type in ['all', 'pre_registrations']:
+        pre_registrations = pre_reg_query.select_related('course')
+        
+        if pre_registrations.exists():
+            # Write header for pre-registrations
+            writer.writerow(['=== PRE-REGISTRATIONS ==='])
+            writer.writerow([
+                'ID', 'Full Name', 'Email', 'Phone', 'Address', 'Level', 'Course',
+                'Message', 'Contacted', 'Contacted At', 'Created At'
+            ])
+            
+            # Write pre-registration data
+            for pre_reg in pre_registrations:
+                writer.writerow([
+                    pre_reg.id,
+                    pre_reg.full_name,
+                    pre_reg.email,
+                    pre_reg.phone,
+                    pre_reg.address,
+                    pre_reg.level,
+                    pre_reg.course.name if pre_reg.course else 'N/A',
+                    pre_reg.message,
+                    'Yes' if pre_reg.contacted else 'No',
+                    pre_reg.contacted_at.strftime('%Y-%m-%d %H:%M:%S') if pre_reg.contacted_at else 'N/A',
+                    pre_reg.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                ])
+    
+    return response
 
 @api_view(['GET'])
 def school_dropdown(request):
