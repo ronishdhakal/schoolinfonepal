@@ -38,8 +38,11 @@ class SchoolCourseInline(admin.TabularInline):
 
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'verification', 'featured', 'district', 'level', 'type', 'priority')
-    search_fields = ('name', 'slug', 'address')
+    list_display = (
+        'name', 'slug', 'admin_email', 'verification', 'featured', 'district',
+        'level', 'type', 'priority'
+    )
+    search_fields = ('name', 'slug', 'address', 'admin_email')
     list_filter = ('verification', 'featured', 'district', 'level', 'type')
     prepopulated_fields = {"slug": ("name",)}
     inlines = [
@@ -47,6 +50,7 @@ class SchoolAdmin(admin.ModelAdmin):
         SchoolSocialMediaInline, SchoolFAQInline, SchoolMessageInline, SchoolCourseInline,
     ]
     filter_horizontal = ('facilities', 'universities')
+    readonly_fields = ('user',)  # user is auto-created
 
 @admin.register(SchoolPhone)
 class SchoolPhoneAdmin(admin.ModelAdmin):

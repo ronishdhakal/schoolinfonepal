@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'scholarship',
     'advertisement',
     'core',
+    'inquiry'
 ]
 
 MIDDLEWARE = [

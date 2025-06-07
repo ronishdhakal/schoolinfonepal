@@ -7,8 +7,11 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
-from .models import School, SchoolGallery, SchoolBrochure, SchoolMessage
+from django.db import transaction
+from .models import School, SchoolGallery, SchoolBrochure, SchoolMessage, SchoolEmail
 from .serializers import SchoolSerializer
+from inquiry.models import Inquiry, PreRegistrationInquiry
+from inquiry.serializers import InquirySerializer, PreRegistrationInquirySerializer
 from core.filters import SchoolFilter
 import json
 import os
@@ -28,20 +31,33 @@ def safe_file_delete(file_field):
     """Safely delete a file, handling invalid paths gracefully"""
     if not file_field:
         return
-    
+
     try:
-        # Check if the file path contains invalid characters (like full URLs)
         file_path = str(file_field)
         if 'http:' in file_path or 'https:' in file_path:
-            # This is a corrupted path, just delete the database record
             return
-        
-        # Try to delete the actual file
+
         if file_field and hasattr(file_field, 'delete'):
             file_field.delete(save=False)
     except (OSError, ValueError) as e:
-        # Log the error but don't crash
         print(f"Warning: Could not delete file {file_field}: {e}")
+
+class IsSchoolOwnerOrAdmin(IsAuthenticated):
+    """
+    Custom permission to only allow school owners to access their own data
+    or admins to access any data.
+    """
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+
+        if request.user.role == 'admin':
+            return True
+
+        if request.user.role == 'school':
+            return hasattr(request.user, 'school')
+
+        return False
 
 class SchoolListView(ListAPIView):
     queryset = School.objects.all().order_by('-priority', 'name')
@@ -65,13 +81,13 @@ class SchoolDetailView(RetrieveAPIView):
 @parser_classes([MultiPartParser, FormParser])
 def create_school(request):
     data = request.data.dict()
-    
+
     # Handle boolean fields
     if "verification" in data:
         data["verification"] = data["verification"].lower() == "true"
     if "featured" in data:
         data["featured"] = data["featured"].lower() == "true"
-    
+
     # Handle JSON fields
     for field in [
         "phones", "emails", "gallery", "brochures", "social_media",
@@ -84,6 +100,9 @@ def create_school(request):
     universities = request.data.getlist("universities")
     data["facilities"] = facilities
     data["universities"] = universities
+
+    # Use admin_email as the main email for the School
+    data["admin_email"] = request.data.get("admin_email", "")
 
     serializer = SchoolSerializer(data=data, context={'request': request})
     if serializer.is_valid():
@@ -101,13 +120,13 @@ def create_school(request):
 def update_school(request, slug):
     school = get_object_or_404(School, slug=slug)
     data = request.data.dict()
-    
+
     # Handle boolean fields
     if "verification" in data:
         data["verification"] = data["verification"].lower() == "true"
     if "featured" in data:
         data["featured"] = data["featured"].lower() == "true"
-    
+
     # Handle JSON fields only if provided
     for field in [
         "phones", "emails", "gallery", "brochures", "social_media",
@@ -122,6 +141,10 @@ def update_school(request, slug):
     if "universities" in request.data:
         data["universities"] = request.data.getlist("universities")
 
+    # Use admin_email as the main email for the School
+    if "admin_email" in request.data:
+        data["admin_email"] = request.data.get("admin_email")
+
     serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
     if serializer.is_valid():
         school = serializer.save()
@@ -134,29 +157,28 @@ def update_school(request, slug):
 
 def _handle_file_uploads(school, request, is_update=False):
     """Handle all file uploads for school"""
-    
+
     # Handle main images
     if "logo" in request.FILES:
         if is_update and school.logo:
             safe_file_delete(school.logo)
         school.logo = request.FILES["logo"]
-    
+
     if "cover_photo" in request.FILES:
         if is_update and school.cover_photo:
             safe_file_delete(school.cover_photo)
         school.cover_photo = request.FILES["cover_photo"]
-    
+
     if "og_image" in request.FILES:
         if is_update and school.og_image:
             safe_file_delete(school.og_image)
         school.og_image = request.FILES["og_image"]
-    
+
     school.save()
 
     # Handle gallery images
     if "gallery" in request.data:
         if is_update:
-            # Clean up existing gallery items
             for gallery_item in school.gallery.all():
                 safe_file_delete(gallery_item.image)
                 gallery_item.delete()
@@ -174,7 +196,6 @@ def _handle_file_uploads(school, request, is_update=False):
     # Handle brochure files
     if "brochures" in request.data:
         if is_update:
-            # Clean up existing brochures
             for brochure_item in school.brochures.all():
                 safe_file_delete(brochure_item.file)
                 brochure_item.delete()
@@ -192,7 +213,6 @@ def _handle_file_uploads(school, request, is_update=False):
     # Handle message images
     if "messages" in request.data:
         if is_update:
-            # Clean up existing messages
             for message_item in school.messages.all():
                 safe_file_delete(message_item.image)
                 message_item.delete()
@@ -201,8 +221,7 @@ def _handle_file_uploads(school, request, is_update=False):
         for i, msg in enumerate(messages_data):
             img_key = f"messages_{i}_image"
             msg_image = request.FILES.get(img_key)
-            
-            # Create message if it has any content
+
             if any([msg.get("title"), msg.get("message"), msg.get("name"), msg.get("designation")]) or msg_image:
                 SchoolMessage.objects.create(
                     school=school,
@@ -217,37 +236,98 @@ def _handle_file_uploads(school, request, is_update=False):
 @permission_classes([IsAdminUser])
 def delete_school(request, slug):
     school = get_object_or_404(School, slug=slug)
-    
+
     # Clean up files safely
     safe_file_delete(school.logo)
     safe_file_delete(school.cover_photo)
     safe_file_delete(school.og_image)
-    
+
     # Clean up gallery images
     for gallery_item in school.gallery.all():
         safe_file_delete(gallery_item.image)
-    
+
     # Clean up brochure files
     for brochure_item in school.brochures.all():
         safe_file_delete(brochure_item.file)
-    
+
     # Clean up message images
     for message_item in school.messages.all():
         safe_file_delete(message_item.image)
-    
+
+    # User will be deleted automatically by the signal
     school.delete()
     return Response({"message": "School deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
-# Dashboard-only views
+# Dashboard-only views for schools
 class SchoolOwnDetailView(RetrieveAPIView):
     serializer_class = SchoolSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSchoolOwnerOrAdmin]
+
     def get_object(self):
+        if self.request.user.role == 'admin':
+            return None
         return self.request.user.school
 
-class SchoolOwnUpdateView(SchoolOwnDetailView):
-    def patch(self, request, *args, **kwargs):
-        return update_school(request, self.get_object().slug)
+@api_view(["PATCH"])
+@permission_classes([IsSchoolOwnerOrAdmin])
+@parser_classes([MultiPartParser, FormParser])
+def school_own_update(request):
+    """Allow schools to update their own profile"""
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+    school = request.user.school
+    data = request.data.dict()
+
+    # Handle boolean fields
+    if "verification" in data:
+        data["verification"] = data["verification"].lower() == "true"
+    if "featured" in data:
+        data["featured"] = data["featured"].lower() == "true"
+
+    # Handle JSON fields only if provided
+    for field in [
+        "phones", "emails", "gallery", "brochures", "social_media",
+        "faqs", "messages", "school_courses"
+    ]:
+        if field in request.data:
+            data[field] = safe_json_loads(request.data.get(field, []))
+
+    # Handle M2M fields
+    if "facilities" in request.data:
+        data["facilities"] = request.data.getlist("facilities")
+    if "universities" in request.data:
+        data["universities"] = request.data.getlist("universities")
+
+    # Use admin_email as the main email for the School (for dashboard edit)
+    if "admin_email" in request.data:
+        data["admin_email"] = request.data.get("admin_email")
+
+    serializer = SchoolSerializer(school, data=data, partial=True, context={'request': request})
+    if serializer.is_valid():
+        school = serializer.save()
+
+        # Handle file uploads
+        _handle_file_uploads(school, request, is_update=True)
+
+        return Response(SchoolSerializer(school).data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsSchoolOwnerOrAdmin])
+def school_inquiries(request):
+    """Get inquiries for the school"""
+    if request.user.role != 'school' or not hasattr(request.user, 'school'):
+        return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+    school = request.user.school
+    inquiries = Inquiry.objects.filter(school=school).order_by('-created_at')
+    pre_registrations = PreRegistrationInquiry.objects.filter(school=school).order_by('-created_at')
+
+    return Response({
+        'inquiries': InquirySerializer(inquiries, many=True).data,
+        'pre_registrations': PreRegistrationInquirySerializer(pre_registrations, many=True).data
+    })
 
 @api_view(['GET'])
 def school_dropdown(request):

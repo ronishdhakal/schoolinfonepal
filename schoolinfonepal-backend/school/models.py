@@ -1,20 +1,29 @@
 from django.db import models
 from django.utils.text import slugify
+from django.db.models.signals import pre_save, post_delete, post_save
+from django.dispatch import receiver
 from district.models import District
 from level.models import Level
 from type.models import Type
 from facility.models import Facility
 from university.models import University
 from course.models import Course
-from authentication.models import User
+from django.conf import settings
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class School(models.Model):
     user = models.OneToOneField(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='school'
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
     )
     name = models.CharField(max_length=200, unique=True)
     slug = models.SlugField(max_length=210, unique=True, blank=True)
+    admin_email = models.EmailField(max_length=255, unique=True, blank=True, null=True)  # <-- Updated name
     logo = models.ImageField(upload_to='school/logos/', blank=True, null=True)
     cover_photo = models.ImageField(upload_to='school/covers/', blank=True, null=True)
     address = models.CharField(max_length=255, blank=True)
@@ -33,24 +42,84 @@ class School(models.Model):
     salient_feature = models.TextField(blank=True)
     scholarship = models.TextField(blank=True)
     about_college = models.TextField(blank=True)
-    
+
     # Added Meta Information Fields
     meta_title = models.CharField(max_length=255, blank=True)
     meta_description = models.TextField(blank=True)
     og_title = models.CharField(max_length=255, blank=True)
     og_description = models.TextField(blank=True)
     og_image = models.ImageField(upload_to='school/og/', blank=True, null=True)
-    
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return self.name
+
+    def assign_user(self, email, password="schooldashboard123"):
+        """Create and assign a user to this school (not used for auto-creation)"""
+        if not self.user:
+            base_username = slugify(self.name) or f"school_{self.id}"
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}-{counter}"
+                counter += 1
+
+            user = User(
+                username=username,
+                email=email,
+                first_name=self.name,
+                role="school"
+            )
+            user.set_password(password)
+            user.save()
+            self.user = user
+            self.save(update_fields=["user"])
+            return user
+        return self.user
+
+    def get_primary_email(self):
+        """Get the first email from school emails"""
+        first_email = self.emails.first()
+        return first_email.email if first_email else None
+
+@receiver(pre_save, sender=School)
+def create_slug(sender, instance, **kwargs):
+    if not instance.slug:
+        base_slug = slugify(instance.name)
+        slug = base_slug
+        counter = 1
+        while School.objects.filter(slug=slug).exclude(id=instance.id).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        instance.slug = slug
+
+@receiver(post_save, sender=School)
+def create_user_for_school(sender, instance, created, **kwargs):
+    if created and not instance.user and instance.admin_email:
+        base_username = slugify(instance.name) or f"school_{instance.id}"
+        username = base_username
+        counter = 1
+        User = get_user_model()
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}-{counter}"
+            counter += 1
+
+        user = User.objects.create_user(
+            username=username,
+            email=instance.admin_email,
+            first_name=instance.name,  # or full_name if that's your User field
+            role='school',
+            password='schooldashboard123'  # Default password
+        )
+        instance.user = user
+        instance.save(update_fields=["user"])
+
+@receiver(post_delete, sender=School)
+def delete_user_on_school_delete(sender, instance, **kwargs):
+    if instance.user:
+        instance.user.delete()
 
 class SchoolPhone(models.Model):
     school = models.ForeignKey(School, related_name='phones', on_delete=models.CASCADE)

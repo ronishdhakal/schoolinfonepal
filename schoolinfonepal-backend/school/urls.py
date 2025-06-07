@@ -6,7 +6,8 @@ from .views import (
     update_school,
     delete_school,
     SchoolOwnDetailView,
-    SchoolOwnUpdateView,
+    school_own_update,
+    school_inquiries,
     school_dropdown,
 )
 
@@ -19,7 +20,8 @@ urlpatterns = [
     path('<slug:slug>/update/', update_school, name='school-update'),               # /api/schools/<slug>/update/
     path('<slug:slug>/delete/', delete_school, name='school-delete'),               # /api/schools/<slug>/delete/
     
-    # Dashboard-only views
+    # Dashboard-only views for schools
     path('me/', SchoolOwnDetailView.as_view(), name='school-own-detail'),           # /api/schools/me/
-    path('me/update/', SchoolOwnUpdateView.as_view(), name='school-own-update'),    # /api/schools/me/update/
+    path('me/update/', school_own_update, name='school-own-update'),                # /api/schools/me/update/
+    path('me/inquiries/', school_inquiries, name='school-inquiries'),               # /api/schools/me/inquiries/
 ]
