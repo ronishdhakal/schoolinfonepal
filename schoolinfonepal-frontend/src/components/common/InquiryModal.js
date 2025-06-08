@@ -102,7 +102,7 @@ export default function InquiryModal({ open, onClose, school, course, onSuccess 
           ) : (
             <form className="space-y-4 pt-2" onSubmit={handleSubmit} autoComplete="off">
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Full Name*</label>
+                <label className="block text-gray-700 font-medium mb-1">My Name is</label>
                 <input
                   type="text"
                   className="w-full border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-200 outline-none"
@@ -113,7 +113,7 @@ export default function InquiryModal({ open, onClose, school, course, onSuccess 
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Email*</label>
+                <label className="block text-gray-700 font-medium mb-1">I will reply to</label>
                 <input
                   type="email"
                   className="w-full border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-200 outline-none"
@@ -121,10 +121,10 @@ export default function InquiryModal({ open, onClose, school, course, onSuccess 
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   required
                   placeholder="you@email.com"
-                />
+                /> 
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Phone*</label>
+                <label className="block text-gray-700 font-medium mb-1">Or Call me on</label>
                 <input
                   type="tel"
                   className="w-full border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-200 outline-none"
@@ -135,7 +135,7 @@ export default function InquiryModal({ open, onClose, school, course, onSuccess 
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Address</label>
+                <label className="block text-gray-700 font-medium mb-1">I live in</label>
                 <input
                   type="text"
                   className="w-full border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-200 outline-none"
@@ -145,13 +145,13 @@ export default function InquiryModal({ open, onClose, school, course, onSuccess 
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Message</label>
+                <label className="block text-gray-700 font-medium mb-1">I want to inquire about</label>
                 <textarea
                   className="w-full border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-200 outline-none resize-none"
                   rows={3}
                   value={form.message}
                   onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-                  placeholder="Type your message"
+                  placeholder="I want to inquire about"
                 />
               </div>
               {error && <div className="text-red-500 text-sm">{error}</div>}

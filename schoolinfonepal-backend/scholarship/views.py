@@ -8,6 +8,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
 import json
+from core.pagination import StandardResultsSetPagination
+
 
 from .models import Scholarship
 from .serializers import ScholarshipSerializer
@@ -36,6 +38,8 @@ class ScholarshipListView(ListAPIView):
         'university__name', 'level__name'
     ]
     ordering_fields = ['published_date', 'active_from', 'active_until', 'created_at']
+    pagination_class = StandardResultsSetPagination   # ✅ ADD THIS LINE
+
 
 # ✅ Public: Detail
 class ScholarshipDetailView(RetrieveAPIView):
