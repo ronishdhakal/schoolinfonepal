@@ -12,6 +12,8 @@ from django.utils.text import slugify
 from .models import Information, InformationCategory
 from .serializers import InformationSerializer, InformationCategorySerializer
 from core.filters import InformationFilter
+from core.pagination import StandardResultsSetPagination  # <-- ADD THIS LINE
+
 import json
 
 def safe_json_loads(val):
@@ -28,7 +30,6 @@ def safe_json_loads(val):
 # 📰 Information Views
 # ========================
 
-# ✅ Public List
 class InformationListView(ListAPIView):
     queryset = Information.objects.all().order_by('-published_date', '-created_at')
     serializer_class = InformationSerializer
@@ -36,6 +37,8 @@ class InformationListView(ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = InformationFilter
     search_fields = ['title', 'top_description', 'below_description']
+    pagination_class = StandardResultsSetPagination   # <-- ADD THIS LINE
+
 
 # ✅ Public Detail
 class InformationDetailView(RetrieveAPIView):

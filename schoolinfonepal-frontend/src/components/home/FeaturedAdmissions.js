@@ -5,60 +5,81 @@ import { fetchFeaturedAdmissions } from "@/utils/api";
 
 export default function FeaturedAdmissions() {
   const [admissions, setAdmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFeaturedAdmissions().then(setAdmissions);
+    fetchFeaturedAdmissions()
+      .then((data) => {
+        const result = data?.results || data;
+        console.log("Fetched featured admissions:", result);
+        setAdmissions(Array.isArray(result) ? result : []);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!admissions.length) return null;
+  if (loading) return <div className="text-gray-500 text-center py-4">Loading featured admissions...</div>;
+  if (!admissions.length) return <div className="text-gray-400 text-center py-4">No featured admissions found.</div>;
 
   return (
-    <section className="mb-12">
-      <h2 className="text-2xl font-bold text-[#1ca3fd] mb-6">Featured Admissions</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <section className="py-8 px-4 md:px-6 lg:px-12 bg-gray-50">
+      <h2 className="text-2xl md:text-3xl font-bold text-[#1ca3fd] mb-6 text-center md:text-left">
+        Featured Admissions
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {admissions.map((adm) => (
           <div
             key={adm.id}
-            className="bg-white rounded-2xl shadow hover:shadow-lg transition border border-[#e8f4fc] p-6 flex gap-5"
+            className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all border border-gray-100 p-4 md:p-6 flex flex-col items-start"
           >
-            {/* School Logo & Name */}
-            <div className="flex flex-col items-center min-w-[90px]">
+            {/* Logo and School Name */}
+            <div className="flex items-center mb-4">
               {adm.school && adm.school.logo ? (
                 <Image
                   src={adm.school.logo}
                   alt={adm.school.name}
-                  width={64}
-                  height={64}
-                  className="object-contain rounded-xl border border-[#f0f0f0] bg-white"
+                  width={80}
+                  height={80}
+                  className="object-contain rounded-lg mr-4"
                   unoptimized
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-300">
+                <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                   No Logo
                 </div>
               )}
-              <span className="text-xs text-gray-600 font-semibold mt-2 text-center">
-                {adm.school?.name || "Unknown College"}
-              </span>
+              <div>
+                <h3 className="text-md md:text-lg font-semibold text-gray-800 line-clamp-2">
+                  {adm.school?.name || "Unknown School"}
+                </h3>
+              </div>
             </div>
 
-            {/* Admission Content */}
-            <div className="flex flex-col flex-1 min-w-0">
-              <div className="text-lg font-semibold mb-2 break-words whitespace-normal">
-                {adm.title}
-              </div>
-              <div className="flex flex-wrap gap-2 my-2">
-                {(adm.courses || []).map((c) =>
-                  c && typeof c === "object" ? (
-                    <span
-                      key={c.id}
-                      className="bg-[#e6f6ff] text-[#1ca3fd] rounded px-3 py-1 text-xs font-semibold"
-                    >
-                      {c.name}
-                    </span>
-                  ) : null
+            {/* Courses */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {(adm.courses || []).map((c) =>
+                c && typeof c === "object" ? (
+                  <span
+                    key={c.id}
+                    className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs md:text-sm font-medium"
+                  >
+                    {c.name}
+                  </span>
+                ) : null
+              )}
+            </div>
+
+            {/* Admission Dates */}
+            <div className="text-gray-600 text-xs md:text-sm">
+              <p className="font-medium">Admission Open:</p>
+              <p>
+                {adm.active_from && adm.active_until ? (
+                  <>
+                    {adm.active_from} – {adm.active_until}
+                  </>
+                ) : (
+                  "N/A"
                 )}
-              </div>
+              </p>
             </div>
           </div>
         ))}

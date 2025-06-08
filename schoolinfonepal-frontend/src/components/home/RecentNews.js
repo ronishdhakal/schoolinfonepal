@@ -5,12 +5,21 @@ import { fetchRecentNews } from "@/utils/api";
 
 export default function RecentNews() {
   const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchRecentNews(6).then(setNews);
+    fetchRecentNews(6)
+      .then((data) => {
+        // API might return paginated data or flat array
+        const items = data?.results || data;
+        console.log("Fetched recent news:", items);
+        setNews(Array.isArray(items) ? items : []);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!news.length) return null;
+  if (loading) return <div className="text-gray-500">Loading recent news...</div>;
+  if (!news.length) return <div className="text-gray-400">No recent news found.</div>;
 
   return (
     <section className="mb-10">
@@ -36,7 +45,9 @@ export default function RecentNews() {
             )}
             {/* News Content */}
             <div className="flex flex-col flex-1 min-w-0">
-              <div className="text-base font-semibold text-gray-900 truncate mb-1">{item.title}</div>
+              <div className="text-base font-semibold text-gray-900 truncate mb-1">
+                {item.title}
+              </div>
               {item.summary && (
                 <div className="text-sm text-gray-500 mb-2 line-clamp-2">{item.summary}</div>
               )}

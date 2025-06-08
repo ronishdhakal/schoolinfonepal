@@ -16,6 +16,8 @@ class EventSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    organizer_school_name = serializers.SerializerMethodField()
+    organizer_university_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -23,12 +25,19 @@ class EventSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'description', 'short_description',
             'event_date', 'event_end_date', 'time', 'venue', 'event_type', 'seat_limit',
             'organizer_school', 'organizer_university', 'organizer_custom',
+            'organizer_school_name', 'organizer_university_name',  # Added for display
             'registration_type', 'registration_price', 'registration_link', 'registration_deadline',
             'featured_image', 'banner_image',
             'meta_title', 'meta_description', 'meta_keywords',
             'featured', 'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def get_organizer_school_name(self, obj):
+        return obj.organizer_school.name if obj.organizer_school else None
+
+    def get_organizer_university_name(self, obj):
+        return obj.organizer_university.name if obj.organizer_university else None
 
     def validate(self, attrs):
         if not (

@@ -84,6 +84,7 @@ class IsSchoolOwnerOrAdmin(IsAuthenticated):
             
         return False
 
+# views.py
 class SchoolListView(ListAPIView):
     serializer_class = SchoolSerializer
     permission_classes = [AllowAny]
@@ -96,21 +97,18 @@ class SchoolListView(ListAPIView):
     ]
 
     def get_queryset(self):
-        # Annotate boolean fields as integer for ordering
         return School.objects.annotate(
             is_featured=ExpressionWrapper(F('featured'), output_field=BooleanField()),
             is_verified=ExpressionWrapper(F('verification'), output_field=BooleanField())
         ).order_by(
-            'priority',              # lower is higher precedence
-            '-is_featured',          # True/1 comes first
-            '-is_verified',          # True/1 comes first
-            '-updated_at'            # latest updated comes first
+            'priority', '-is_featured', '-is_verified', '-updated_at'
         )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['request'] = self.request
+        context['request'] = self.request  # Ensure this is present!
         return context
+
 
 
 class SchoolDetailView(RetrieveAPIView):
