@@ -38,7 +38,7 @@ class School(models.Model):
     universities = models.ManyToManyField(University, blank=True, related_name='schools')
     website = models.URLField(blank=True, null=True)
     priority = models.PositiveIntegerField(default=999)
-    map_link = models.URLField(max_length=1024, blank=True)
+    map_link = models.URLField(max_length=10024, blank=True)
     salient_feature = models.TextField(blank=True)
     scholarship = models.TextField(blank=True)
     about_college = models.TextField(blank=True)

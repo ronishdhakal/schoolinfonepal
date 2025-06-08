@@ -31,29 +31,25 @@ class InquirySerializer(serializers.ModelSerializer):
         school_id = validated_data.pop('school_id', None)
         course_id = validated_data.pop('course_id', None)
 
-        # Remove these keys if they're None (avoid passing them to .create)
         create_kwargs = {**validated_data}
         if 'school' in create_kwargs:
             create_kwargs.pop('school')
         if 'course' in create_kwargs:
             create_kwargs.pop('course')
 
-        inquiry = Inquiry.objects.create(**create_kwargs)
-
-        # Assign school if school_id provided
+        # Assign related FKs before creating the object
         if school_id is not None:
             try:
-                inquiry.school = School.objects.get(id=school_id)
+                create_kwargs['school'] = School.objects.get(id=school_id)
             except School.DoesNotExist:
-                inquiry.school = None
-        # Assign course if course_id provided
+                raise serializers.ValidationError({"school_id": "School not found."})
         if course_id is not None:
             try:
-                inquiry.course = Course.objects.get(id=course_id)
+                create_kwargs['course'] = Course.objects.get(id=course_id)
             except Course.DoesNotExist:
-                inquiry.course = None
+                create_kwargs['course'] = None
 
-        inquiry.save()
+        inquiry = Inquiry.objects.create(**create_kwargs)
         return inquiry
 
 class PreRegistrationInquirySerializer(serializers.ModelSerializer):
@@ -80,18 +76,17 @@ class PreRegistrationInquirySerializer(serializers.ModelSerializer):
         if 'course' in create_kwargs:
             create_kwargs.pop('course')
 
-        inquiry = PreRegistrationInquiry.objects.create(**create_kwargs)
-
+        # Assign related FKs before creating the object
         if school_id is not None:
             try:
-                inquiry.school = School.objects.get(id=school_id)
+                create_kwargs['school'] = School.objects.get(id=school_id)
             except School.DoesNotExist:
-                inquiry.school = None
+                raise serializers.ValidationError({"school_id": "School not found."})
         if course_id is not None:
             try:
-                inquiry.course = Course.objects.get(id=course_id)
+                create_kwargs['course'] = Course.objects.get(id=course_id)
             except Course.DoesNotExist:
-                inquiry.course = None
+                create_kwargs['course'] = None
 
-        inquiry.save()
+        inquiry = PreRegistrationInquiry.objects.create(**create_kwargs)
         return inquiry
