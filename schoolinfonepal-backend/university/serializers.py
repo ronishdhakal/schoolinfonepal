@@ -17,6 +17,8 @@ class UniversityGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = UniversityGallery
         fields = ['id', 'image', 'caption']
+        
+
 
 class UniversitySerializer(serializers.ModelSerializer):
     phones = UniversityPhoneSerializer(many=True, required=False, read_only=True)

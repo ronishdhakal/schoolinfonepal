@@ -57,5 +57,5 @@ def delete_level(request, slug):
 
 @api_view(['GET'])
 def level_dropdown(request):
-    levels = Level.objects.all().values('id', 'title')
+    levels = Level.objects.all().values('id', 'title', 'slug')
     return Response(levels)

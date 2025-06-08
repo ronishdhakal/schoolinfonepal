@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
 import json
 
+
 from .models import University, UniversityGallery
 from .serializers import UniversitySerializer
 from type.models import Type
@@ -176,5 +177,5 @@ def university_delete(request, slug):
 
 @api_view(['GET'])
 def university_dropdown(request):
-    universities = University.objects.all().values('id', 'name')
+    universities = University.objects.all().values('id', 'name', 'slug')
     return Response(universities)

@@ -4,7 +4,7 @@ import Footer from "@/components/layout/Footer";
 import InquiryModal from "@/components/common/InquiryModal";
 import SchoolHeader from "@/components/school/SchoolHeader";
 import SchoolOverview from "@/components/school/SchoolOverview";
-import SchoolAdmission from "@/components/school/SchoolAdmission"; // ✅ NEW
+import SchoolAdmission from "@/components/school/SchoolAdmission";
 import SchoolCourses from "@/components/school/SchoolCourses";
 import SchoolScholarship from "@/components/school/SchoolScholarship";
 import SchoolFacilities from "@/components/school/SchoolFacilities";
@@ -18,7 +18,7 @@ import { useRef, useState, useEffect } from "react";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "admission", label: "Admissions" }, // ✅ Add this for tab if you want
+  { id: "admission", label: "Admissions" },
   { id: "courses", label: "Courses" },
   { id: "scholarship", label: "Scholarship" },
   { id: "facilities", label: "Facilities" },
@@ -35,7 +35,7 @@ export default function SchoolSlugPage({ school }) {
   const sectionRefs = useRef({});
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Intersection observer for section highlight
+  // Section highlight on scroll
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handleScroll = () => {
@@ -63,7 +63,7 @@ export default function SchoolSlugPage({ school }) {
     }
   };
 
-  // --- SEO/OG fallback helpers ---
+  // SEO meta
   const metaTitle =
     school?.meta_title?.trim() ||
     (school
@@ -91,13 +91,11 @@ export default function SchoolSlugPage({ school }) {
       <Head>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDesc} />
-        {/* OG tags */}
         <meta property="og:title" content={ogTitle} />
         <meta property="og:description" content={ogDesc} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://schoolinfonepal.com/school/${school?.slug || ""}`} />
-        {/* Twitter card */}
         <meta name="twitter:title" content={ogTitle} />
         <meta name="twitter:description" content={ogDesc} />
         <meta name="twitter:image" content={ogImage} />
@@ -105,7 +103,6 @@ export default function SchoolSlugPage({ school }) {
       </Head>
       <Header />
 
-      {/* Inquiry modal */}
       <InquiryModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -139,13 +136,14 @@ export default function SchoolSlugPage({ school }) {
           {/* Main content */}
           <main className="flex-1 flex flex-col gap-12 py-6 md:py-8 lg:py-12 px-4 sm:px-6">
             {!school?.id ? (
-              <div className="text-center text-gray-400 py-12 text-lg">Loading school details...</div>
+              <div className="text-center text-gray-400 py-12 text-lg">
+                Loading school details...
+              </div>
             ) : (
               <>
                 <div ref={(el) => (sectionRefs.current.overview = el)} id="overview">
                   <SchoolOverview school={school} />
                 </div>
-                {/* --- Insert Admission Section Above Courses --- */}
                 <div ref={(el) => (sectionRefs.current.admission = el)} id="admission">
                   <SchoolAdmission school={school} />
                 </div>
@@ -189,7 +187,6 @@ export default function SchoolSlugPage({ school }) {
 // --- Server-Side Fetching (SEO-Ready) ---
 export async function getServerSideProps({ params }) {
   const { slug } = params;
-  // API endpoint is /api/schools/<slug>/ as per your backend
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
   let school = null;
   try {

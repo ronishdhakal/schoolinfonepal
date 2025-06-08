@@ -103,7 +103,11 @@ export const fetchDistrictsDropdown = () => get("/districts/dropdown/")
 export const fetchUniversitiesDropdown = () => get("/universities/dropdown/")
 export const fetchLevelsDropdown = () => get("/levels/dropdown/")
 export const fetchTypesDropdown = () => get("/types/dropdown/")
-export const fetchCoursesDropdown = () => get("/courses/dropdown/")
+export async function fetchCoursesDropdown() {
+  const res = await fetch(`${API_BASE_URL}/courses/?page_size=1000`);
+  const data = await res.json();
+  return Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+}
 export const fetchFacilitiesDropdown = () => get("/facilities/dropdown/")
 export const fetchDisciplinesDropdown = () => get("/disciplines/dropdown/")
 export const fetchSchoolsDropdown = () => get("/schools/dropdown/")

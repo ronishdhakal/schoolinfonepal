@@ -77,7 +77,7 @@ export default function PreRegistrationInquiryForm({ school, course, onSuccess }
       ) : (
         <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
           <div>
-            <label className="block font-medium mb-1">Full Name*</label>
+            <label className="block font-medium mb-1">Full Name</label>
             <input
               type="text"
               className="w-full border rounded px-3 py-2"
@@ -88,7 +88,7 @@ export default function PreRegistrationInquiryForm({ school, course, onSuccess }
             />
           </div>
           <div>
-            <label className="block font-medium mb-1">Email Address*</label>
+            <label className="block font-medium mb-1">Email Address</label>
             <input
               type="email"
               className="w-full border rounded px-3 py-2"
@@ -99,7 +99,7 @@ export default function PreRegistrationInquiryForm({ school, course, onSuccess }
             />
           </div>
           <div>
-            <label className="block font-medium mb-1">Contact Number*</label>
+            <label className="block font-medium mb-1">Contact Number</label>
             <input
               type="tel"
               className="w-full border rounded px-3 py-2"
@@ -120,7 +120,7 @@ export default function PreRegistrationInquiryForm({ school, course, onSuccess }
             />
           </div>
           <div>
-            <label className="block font-medium mb-1">Level*</label>
+            <label className="block font-medium mb-1">Level</label>
             <input
               type="text"
               className="w-full border rounded px-3 py-2"

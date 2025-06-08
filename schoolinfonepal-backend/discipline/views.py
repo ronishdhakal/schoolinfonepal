@@ -57,5 +57,5 @@ def delete_discipline(request, slug):
 
 @api_view(['GET'])
 def discipline_dropdown(request):
-    disciplines = Discipline.objects.all().values('id', 'title')
+    disciplines = Discipline.objects.all().values('id', 'title', 'slug')
     return Response(disciplines)
