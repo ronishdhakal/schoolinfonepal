@@ -202,15 +202,18 @@ export default function InformationForm({ information, onSuccess, onCancel }) {
     try {
       const submitData = new FormData()
 
-      // Add all form fields
+      // Add all form fields - including empty strings for content fields
       Object.keys(formData).forEach((key) => {
-        if (Array.isArray(formData[key])) {
+        const value = formData[key]
+
+        if (Array.isArray(value)) {
           // Handle array fields (relationships)
-          if (formData[key].length > 0) {
-            submitData.append(key, JSON.stringify(formData[key]))
+          if (value.length > 0) {
+            submitData.append(key, JSON.stringify(value))
           }
-        } else if (formData[key] !== "" && formData[key] !== null && formData[key] !== undefined) {
-          submitData.append(key, formData[key])
+        } else if (value !== null && value !== undefined) {
+          // Include all values, even empty strings for content fields
+          submitData.append(key, value)
         }
       })
 
@@ -221,6 +224,12 @@ export default function InformationForm({ information, onSuccess, onCancel }) {
 
       if (bannerImage) {
         submitData.append("banner_image", bannerImage)
+      }
+
+      // Debug: Log what we're sending
+      console.log("Submitting form data:")
+      for (const [key, value] of submitData.entries()) {
+        console.log(`${key}:`, value)
       }
 
       // Submit to API

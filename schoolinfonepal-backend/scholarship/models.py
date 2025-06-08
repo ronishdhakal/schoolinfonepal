@@ -27,6 +27,10 @@ class Scholarship(models.Model):
     level = models.ForeignKey(Level, on_delete=models.SET_NULL, null=True, blank=True)
     university = models.ForeignKey(University, on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_scholarships')
 
+    # About section
+    description = models.TextField(blank=True, help_text="Detailed description about the scholarship")
+    attachment = models.FileField(upload_to='scholarships/attachments/', blank=True, null=True, help_text="Scholarship brochure or related documents")
+
     featured = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)

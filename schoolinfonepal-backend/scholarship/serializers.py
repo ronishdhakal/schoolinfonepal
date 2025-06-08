@@ -32,6 +32,7 @@ class ScholarshipSerializer(serializers.ModelSerializer):
             'active_from', 'active_until',
             'organizer_school', 'organizer_university', 'organizer_custom',
             'courses', 'level', 'university',
+            'description', 'attachment',
             'featured', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']

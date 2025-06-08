@@ -3,6 +3,25 @@ from rest_framework import serializers
 from .models import University, UniversityPhone, UniversityEmail, UniversityGallery
 from type.models import Type
 
+# --- Minimal Serializers ---
+from course.models import Course
+from school.models import School
+
+class CourseMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = ['id', 'name', 'slug', 'duration', 'level']
+
+class SchoolMinimalSerializer(serializers.ModelSerializer):
+    district_name = serializers.CharField(source='district.name', read_only=True)
+
+    class Meta:
+        model = School
+        fields = [
+            'id', 'name', 'slug', 'logo', 'cover_photo',
+            'address', 'district', 'district_name', 'verification'
+        ]
+
 class UniversityPhoneSerializer(serializers.ModelSerializer):
     class Meta:
         model = UniversityPhone
@@ -17,23 +36,22 @@ class UniversityGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = UniversityGallery
         fields = ['id', 'image', 'caption']
-        
-
 
 class UniversitySerializer(serializers.ModelSerializer):
     phones = UniversityPhoneSerializer(many=True, required=False, read_only=True)
     emails = UniversityEmailSerializer(many=True, required=False, read_only=True)
     gallery = UniversityGallerySerializer(many=True, required=False, read_only=True)
-    
-    # Change type to use PrimaryKeyRelatedField instead of SlugRelatedField
+
     type = serializers.PrimaryKeyRelatedField(
         queryset=Type.objects.all(),
         required=False,
         allow_null=True
     )
-    
-    # Add type_name for display purposes
     type_name = serializers.CharField(source='type.name', read_only=True)
+
+    # --- ADD THESE FIELDS ---
+    courses = serializers.SerializerMethodField()
+    schools = serializers.SerializerMethodField()
 
     class Meta:
         model = University
@@ -45,9 +63,24 @@ class UniversitySerializer(serializers.ModelSerializer):
             'og_image', 'og_title', 'og_description',
             'is_verified', 'foreign_affiliated',
             'created_at', 'updated_at', 'status',
+            'courses', 'schools',   # <-- new fields!
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at']
 
+    # ----------- Courses and Schools ----------
+    def get_courses(self, obj):
+        # Assumes: Course model has university = ForeignKey(University)
+        from course.models import Course  # avoid circular import
+        courses = Course.objects.filter(university=obj)
+        return CourseMinimalSerializer(courses, many=True).data
+
+    def get_schools(self, obj):
+        # Assumes: School model has universities = ManyToManyField(University, related_name="schools")
+        from school.models import School  # avoid circular import
+        schools = obj.schools.all()
+        return SchoolMinimalSerializer(schools, many=True).data
+
+    # ----- (keep your safe_json_loads, create, update logic below) -----
     def safe_json_loads(self, raw, fallback):
         if not raw:
             return fallback
@@ -69,7 +102,6 @@ class UniversitySerializer(serializers.ModelSerializer):
         for phone in phones_data:
             if phone.get('phone'):
                 UniversityPhone.objects.create(university=university, phone=phone['phone'])
-        
         for email in emails_data:
             if email.get('email'):
                 UniversityEmail.objects.create(university=university, email=email['email'])
@@ -109,7 +141,7 @@ class UniversitySerializer(serializers.ModelSerializer):
             for item in gallery_data:
                 if isinstance(item.get('image'), str) and item['image']:
                     existing_images.append(item['image'])
-            
+
             # Remove gallery items not in the existing_images list
             for gallery_item in instance.gallery.all():
                 if gallery_item.image.url not in existing_images:

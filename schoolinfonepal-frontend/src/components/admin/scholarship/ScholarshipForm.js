@@ -8,11 +8,12 @@ import {
   fetchUniversitiesDropdown,
   fetchCoursesDropdown,
   fetchLevelsDropdown,
-} from "../../../utils/api"
+} from "@/utils/api"
 import ScholarshipBasicInfo from "./ScholarshipBasicInfo"
 import ScholarshipDates from "./ScholarshipDates"
 import ScholarshipOrganizer from "./ScholarshipOrganizer"
 import ScholarshipRelations from "./ScholarshipRelations"
+import ScholarshipAbout from "./ScholarshipAbout"
 
 export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
@@ -27,6 +28,8 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
     courses: [],
     level: "",
     university: "",
+    description: "",
+    attachment: null,
     featured: false,
   })
 
@@ -55,6 +58,8 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
         courses: scholarship.courses || [],
         level: scholarship.level || "",
         university: scholarship.university || "",
+        description: scholarship.description || "",
+        attachment: scholarship.attachment || null,
         featured: scholarship.featured || false,
       })
     }
@@ -132,7 +137,9 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
       const submitData = new FormData()
 
       Object.keys(formData).forEach((key) => {
-        if (Array.isArray(formData[key])) {
+        if (key === "attachment" && formData[key] instanceof File) {
+          submitData.append(key, formData[key])
+        } else if (Array.isArray(formData[key])) {
           submitData.append(key, JSON.stringify(formData[key]))
         } else if (formData[key] !== "" && formData[key] !== null && formData[key] !== undefined) {
           submitData.append(key, formData[key])
@@ -185,6 +192,8 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
           universities={dropdowns.universities}
           errors={errors}
         />
+
+        <ScholarshipAbout formData={formData} setFormData={setFormData} errors={errors} />
 
         <div className="flex justify-end space-x-4">
           <button

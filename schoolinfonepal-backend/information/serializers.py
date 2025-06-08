@@ -40,9 +40,11 @@ class InformationSerializer(serializers.ModelSerializer):
         model = Information
         fields = [
             'id', 'title', 'slug', 'category', 'published_date',
-            'featured_image', 'universities', 'levels', 'courses', 'schools',
-            'top_description', 'below_description',
-            'featured', 'created_at', 'updated_at'
+            'featured_image', 'banner_image',  # If you use it
+            'universities', 'levels', 'courses', 'schools',
+            'top_description', 'content', 'below_description',  # <-- Add content here
+            'meta_title', 'meta_description', 'meta_keywords',  # <-- Add meta fields here
+            'featured', 'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 

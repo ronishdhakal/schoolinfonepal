@@ -1,6 +1,8 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, MapPin } from "lucide-react";
+import { getFullImageUrl } from "@/utils/imageUrl"; // <- Make sure this util exists!
 
 export default function SchoolCard({ school, onApply }) {
   const schoolUrl = `/school/${school.slug}`;
@@ -12,7 +14,7 @@ export default function SchoolCard({ school, onApply }) {
         <div className="relative w-full h-40 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden rounded-t-2xl">
           {school.cover_photo ? (
             <Image
-              src={school.cover_photo}
+              src={getFullImageUrl(school.cover_photo)}
               alt={`${school.name} Cover`}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300 rounded-t-2xl"
@@ -42,7 +44,7 @@ export default function SchoolCard({ school, onApply }) {
         <div className="bg-white rounded-2xl shadow-lg p-2 w-16 h-16 flex items-center justify-center border-2 border-white">
           {school.logo ? (
             <Image
-              src={school.logo}
+              src={getFullImageUrl(school.logo)}
               alt={school.name}
               width={48}
               height={48}
