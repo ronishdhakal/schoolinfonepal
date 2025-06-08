@@ -97,20 +97,124 @@ export function logout() {
 // 📍 Dropdown Fetchers (Public)
 // ========================
 
-const get = async (url) => (await fetch(`${API_BASE_URL}${url}`)).json()
+const get = async (url) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const text = await response.text()
+    if (!text) {
+      return []
+    }
+    return JSON.parse(text)
+  } catch (error) {
+    console.error(`Error fetching ${url}:`, error)
+    return []
+  }
+}
 
 export const fetchDistrictsDropdown = () => get("/districts/dropdown/")
 export const fetchUniversitiesDropdown = () => get("/universities/dropdown/")
 export const fetchLevelsDropdown = () => get("/levels/dropdown/")
 export const fetchTypesDropdown = () => get("/types/dropdown/")
 export async function fetchCoursesDropdown() {
-  const res = await fetch(`${API_BASE_URL}/courses/?page_size=1000`);
-  const data = await res.json();
-  return Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+  try {
+    const res = await fetch(`${API_BASE_URL}/courses/?page_size=1000`)
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`)
+    }
+    const text = await res.text()
+    if (!text) {
+      return []
+    }
+    const data = JSON.parse(text)
+    return Array.isArray(data.results) ? data.results : Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error("Error fetching courses dropdown:", error)
+    return []
+  }
 }
 export const fetchFacilitiesDropdown = () => get("/facilities/dropdown/")
 export const fetchDisciplinesDropdown = () => get("/disciplines/dropdown/")
 export const fetchSchoolsDropdown = () => get("/schools/dropdown/")
+
+// ========================
+// 🎓 Admission APIs
+// ========================
+
+export const fetchAdmissions = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/admissions/`)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.append(key, value)
+    }
+  })
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("Failed to fetch admissions")
+  return res.json()
+}
+
+export const fetchAdmissionBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE_URL}/admissions/${slug}/`)
+  if (!res.ok) throw new Error("Failed to fetch admission")
+  return res.json()
+}
+
+export const createAdmission = async (formData) => {
+  const headers = getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/admissions/create/`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Create failed")
+  }
+  return res.json()
+}
+
+export const updateAdmission = async (slug, formData) => {
+  const headers = getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/admissions/${slug}/update/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    const error = await res.json()
+    throw new Error(error?.detail || "Update failed")
+  }
+  return res.json()
+}
+
+export const deleteAdmission = async (slug) => {
+  const headers = getTokenHeaders()
+  const res = await fetch(`${API_BASE_URL}/admissions/${slug}/delete/`, {
+    method: "DELETE",
+    headers,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
+    throw new Error("Delete failed")
+  }
+  return res.json()
+}
 
 // ========================
 // 📧 Inquiry APIs (Admin)
@@ -215,19 +319,19 @@ export const exportInquiriesCSV = async (params = {}) => {
 // ========================
 
 export const fetchSchools = async (params = {}) => {
-  const url = new URL(`${API_BASE_URL}/schools/`);
+  const url = new URL(`${API_BASE_URL}/schools/`)
   Object.entries(params).forEach(([key, value]) => {
     // Skip null/empty/undefined values
     if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.append(key, value);
+      url.searchParams.append(key, value)
     }
-  });
-  const res = await fetch(url);
+  })
+  const res = await fetch(url)
   if (!res.ok) {
-    throw new Error("Failed to fetch schools");
+    throw new Error("Failed to fetch schools")
   }
-  return res.json();
-};
+  return res.json()
+}
 
 export const fetchSchoolBySlug = async (slug) => {
   const res = await fetch(`${API_BASE_URL}/schools/${slug}/`)
@@ -625,13 +729,11 @@ export const deleteAdvertisement = async (id) => {
 }
 export const fetchAdsByPlacements = async (placements = []) => {
   // Usage: fetchAdsByPlacements(['home-1', 'home-2'])
-  const url = new URL(`${API_BASE_URL}/ads/`);
-  placements.forEach((placement) => url.searchParams.append("placement", placement));
-  const res = await fetch(url);
-  return res.json();
-};
-
-
+  const url = new URL(`${API_BASE_URL}/ads/`)
+  placements.forEach((placement) => url.searchParams.append("placement", placement))
+  const res = await fetch(url)
+  return res.json()
+}
 
 // ========================
 // 📚 Discipline APIs
@@ -1244,35 +1346,34 @@ export const deleteType = async (slug) => {
   return res.json()
 }
 
-
 // For Home
 // Fetch all featured schools
 export const fetchFeaturedSchools = async () => {
   // Only return schools where featured=true
-  const url = new URL(`${API_BASE_URL}/schools/`);
-  url.searchParams.append("featured", "true");
-  const res = await fetch(url);
-  return res.json();
-};
+  const url = new URL(`${API_BASE_URL}/schools/`)
+  url.searchParams.append("featured", "true")
+  const res = await fetch(url)
+  return res.json()
+}
 
 // Fetch all featured admissions
 export const fetchFeaturedAdmissions = async () => {
-  const url = new URL(`${API_BASE_URL}/admissions/`);
-  url.searchParams.append("featured", "true");
-  const res = await fetch(url);
-  return res.json();
-};
+  const url = new URL(`${API_BASE_URL}/admissions/`)
+  url.searchParams.append("featured", "true")
+  const res = await fetch(url)
+  return res.json()
+}
 
 // Fetch most recent news/information (limit 6 for example)
 export const fetchRecentNews = async (limit = 6) => {
-  const url = new URL(`${API_BASE_URL}/information/`);
-  url.searchParams.append("ordering", "-published_date");
-  url.searchParams.append("is_active", "true");
-  url.searchParams.append("featured", "false");
-  url.searchParams.append("limit", limit);
-  const res = await fetch(url);
-  return res.json();
-};
+  const url = new URL(`${API_BASE_URL}/information/`)
+  url.searchParams.append("ordering", "-published_date")
+  url.searchParams.append("is_active", "true")
+  url.searchParams.append("featured", "false")
+  url.searchParams.append("limit", limit)
+  const res = await fetch(url)
+  return res.json()
+}
 
 // Inquiry
 export const createInquiry = async (data) => {
@@ -1280,30 +1381,17 @@ export const createInquiry = async (data) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to submit inquiry");
-  return res.json();
-};
+  })
+  if (!res.ok) throw new Error("Failed to submit inquiry")
+  return res.json()
+}
 
 export const createPreRegistrationInquiry = async (data) => {
   const res = await fetch(`${API_BASE_URL}/inquiries/pre-registration/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to submit pre-registration");
-  return res.json();
-};
-
-
-export const fetchAdmissions = async (params = {}) => {
-  const url = new URL(`${API_BASE_URL}/admissions/`);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.append(key, value);
-    }
-  });
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch admissions");
-  return res.json();
-};
+  })
+  if (!res.ok) throw new Error("Failed to submit pre-registration")
+  return res.json()
+}

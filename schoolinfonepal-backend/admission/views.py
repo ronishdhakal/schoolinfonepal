@@ -7,6 +7,8 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils.text import slugify
 from django.shortcuts import get_object_or_404
+from core.pagination import StandardResultsSetPagination
+
 
 from .models import Admission
 from .serializers import AdmissionSerializer
@@ -38,6 +40,8 @@ class AdmissionListView(ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = AdmissionFilter
     search_fields = ['title', 'school__name', 'university__name']
+    pagination_class = StandardResultsSetPagination   # <-- ADD THIS LINE
+
 
 class AdmissionDetailView(RetrieveAPIView):
     queryset = Admission.objects.all()
