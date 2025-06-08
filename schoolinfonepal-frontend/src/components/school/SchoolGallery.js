@@ -1,6 +1,6 @@
 // src/components/school/SchoolGallery.js
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Image as ImageIcon, X, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -16,11 +16,15 @@ export default function SchoolGallery({ school }) {
   // Open popup at index
   function openPopup(idx) {
     setPopup({ open: true, idx });
-    document.body.style.overflow = "hidden";
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "hidden";
+    }
   }
   function closePopup() {
     setPopup({ open: false, idx: 0 });
-    document.body.style.overflow = "";
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+    }
   }
   function prevImg() {
     setPopup((p) => ({
@@ -35,8 +39,9 @@ export default function SchoolGallery({ school }) {
     }));
   }
 
-  // Keyboard navigation
-  useState(() => {
+  // Keyboard navigation (SSR safe)
+  useEffect(() => {
+    if (typeof window === "undefined" || !popup.open) return;
     function handle(e) {
       if (!popup.open) return;
       if (e.key === "Escape") closePopup();
@@ -45,7 +50,8 @@ export default function SchoolGallery({ school }) {
     }
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [popup.open]);
+    // eslint-disable-next-line
+  }, [popup.open, gallery.length]);
 
   return (
     <section className="bg-white rounded-2xl shadow mb-8 px-6 py-7">
@@ -63,6 +69,7 @@ export default function SchoolGallery({ school }) {
             style={{ background: "#f3f4f6" }}
             onClick={() => openPopup(showAll ? i : i)}
             aria-label="Open image"
+            type="button"
           >
             <Image
               src={img.image}
@@ -80,6 +87,7 @@ export default function SchoolGallery({ school }) {
         <button
           onClick={() => setShowAll((v) => !v)}
           className="text-blue-700 font-semibold hover:underline text-sm"
+          type="button"
         >
           {showAll ? "Show less" : `Show all (${gallery.length})`}
         </button>
@@ -92,6 +100,7 @@ export default function SchoolGallery({ school }) {
             className="absolute top-6 right-6 text-white bg-black/70 rounded-full p-2 z-20"
             onClick={closePopup}
             aria-label="Close"
+            type="button"
           >
             <X className="w-7 h-7" />
           </button>
@@ -99,6 +108,7 @@ export default function SchoolGallery({ school }) {
             className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/60 rounded-full p-2 z-20"
             onClick={prevImg}
             aria-label="Previous"
+            type="button"
           >
             <ChevronLeft className="w-7 h-7 text-white" />
           </button>
@@ -106,6 +116,7 @@ export default function SchoolGallery({ school }) {
             className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/60 rounded-full p-2 z-20"
             onClick={nextImg}
             aria-label="Next"
+            type="button"
           >
             <ChevronRight className="w-7 h-7 text-white" />
           </button>

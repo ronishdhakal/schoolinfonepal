@@ -1,9 +1,14 @@
-// src/components/school/SchoolCourses.js
 "use client";
 import { useState } from "react";
 import InquiryModal from "@/components/common/InquiryModal";
 import PreRegistrationInquiryModal from "@/components/common/PreRegistrationInquiryModal";
-import { GraduationCap, Banknote } from "lucide-react";
+import {
+  GraduationCap,
+  Building2,
+  Clock,
+  Mail,
+  Banknote,
+} from "lucide-react";
 
 export default function SchoolCourses({ school }) {
   const [openInquiryId, setOpenInquiryId] = useState(null);
@@ -14,74 +19,82 @@ export default function SchoolCourses({ school }) {
   if (!courses.length) return null;
 
   return (
-    <section className="bg-white rounded-2xl shadow mb-8 px-6 py-7">
+    <section className="bg-white rounded-2xl p-3 md:p-8 mb-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 md:mb-8">
+        <h2 className="text-xl md:text-3xl font-extrabold text-[#1868ae] font-sans tracking-tight">
           Courses Offered
         </h2>
         {level && (
-          <span className="inline-block bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-sm font-semibold ml-2 mb-1">
+          <span className="inline-block bg-gray-50 text-[#1868ae] rounded-full px-4 py-1 text-sm md:text-base font-semibold shadow-sm border border-blue-100">
             {level}
           </span>
         )}
       </div>
 
-      {/* Course Cards List */}
-      <div className="flex flex-col gap-3 mb-8">
+      {/* Course List */}
+      <div className="flex flex-col gap-3 md:gap-6 mb-6 md:mb-10">
         {courses.map((sc) => (
           <div
             key={sc.id}
-            className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 bg-white border border-gray-200 rounded-xl px-3 py-3 md:px-6 md:py-5 transition group hover:shadow-md"
           >
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <GraduationCap className="text-blue-600 w-5 h-5" />
-                <span className="text-lg font-semibold text-gray-900">{sc.course?.name || "Course"}</span>
+            {/* Left: Course Info */}
+            <div className="min-w-0">
+              <div className="text-base md:text-xl font-semibold text-gray-900 mb-0.5 flex items-center gap-1 font-sans truncate">
+                <GraduationCap className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <span className="truncate">{sc.course?.name || sc.course_name || sc.name || "Course"}</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-600 text-sm mb-1">
-                <span>University:</span>
-                <span className="bg-gray-200 text-gray-700 rounded px-2 py-0.5 font-medium">
-                  {sc.course?.university_name || "—"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-700 font-medium">
-                <Banknote className="w-5 h-5 text-green-600" />
-                {sc.fee !== null && sc.fee !== undefined && sc.fee !== "" ? (
-                  <>
-                    <span>Fee:</span>
-                    <span className="text-gray-900 font-semibold">Rs. {Number(sc.fee).toLocaleString()}</span>
-                  </>
-                ) : (
-                  <span>Fee: —</span>
-                )}
-              </div>
+              {(sc.course?.university_name || sc.university_name) && (
+                <div className="flex items-center gap-1 text-blue-700 text-xs font-semibold mb-0.5">
+                  <Building2 className="w-4 h-4 text-blue-300 flex-shrink-0" />
+                  <span className="bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full shadow-sm">
+                    {sc.course?.university_name || sc.university_name}
+                  </span>
+                </div>
+              )}
+              {sc.fee !== null && sc.fee !== undefined && sc.fee !== "" && (
+                <div className="flex items-center gap-1 mt-0.5 text-gray-700 text-xs md:text-sm font-normal">
+                  <Banknote className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <span>
+                    Rs. {Number(sc.fee).toLocaleString()}
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="flex-shrink-0">
+            {/* Right: Duration & Apply */}
+            <div className="flex flex-row items-center gap-2 sm:gap-4 flex-shrink-0 mt-2 sm:mt-0">
+              <span className="inline-flex items-center gap-1 bg-gray-50 text-blue-700 font-semibold px-2 py-1 rounded-full text-xs md:text-sm border border-gray-200">
+                <Clock className="w-4 h-4" />
+                {(sc.course?.duration || sc.duration) ? `${sc.course?.duration || sc.duration}` : "—"}
+              </span>
               <button
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition"
+                className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 md:px-6 md:py-2 rounded-full shadow-sm transition text-xs md:text-base active:scale-95 focus:outline-none"
                 onClick={() => setOpenInquiryId(sc.id)}
               >
-                Apply Now
+                <Mail className="w-4 h-4 md:w-5 md:h-5" />
+                Apply
               </button>
+              {openInquiryId === sc.id && (
+                <InquiryModal
+                  open={true}
+                  onClose={() => setOpenInquiryId(null)}
+                  school={school}
+                  course={sc.course}
+                  onSuccess={() => setOpenInquiryId(null)}
+                />
+              )}
             </div>
-            {/* InquiryModal for this course */}
-            {openInquiryId === sc.id && (
-              <InquiryModal
-                open={true}
-                onClose={() => setOpenInquiryId(null)}
-                school={school}
-                course={sc.course}
-                onSuccess={() => setOpenInquiryId(null)}
-              />
-            )}
           </div>
         ))}
       </div>
 
-      {/* Embedded Pre-Registration Form (always visible, not modal) */}
-      <div className="bg-gray-100 rounded-xl p-6 mt-4 shadow-inner max-w-xl mx-auto">
-        <div className="font-semibold text-lg text-blue-700 mb-3">Pre-Registration Form</div>
+      {/* Embedded Pre-Registration Form */}
+      <div className="bg-white border border-gray-200 rounded-xl p-3 md:p-7 max-w-2xl mx-auto mt-6">
+        <div className="font-semibold text-base md:text-xl text-[#1868ae] mb-3 md:mb-5 font-sans flex items-center gap-2">
+          <Mail className="w-5 h-5 md:w-6 md:h-6" />
+          Pre-Registration Form
+        </div>
         <PreRegistrationInquiryModal
           open={true}
           onClose={() => {}}

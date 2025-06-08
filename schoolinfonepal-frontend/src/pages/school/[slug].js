@@ -1,11 +1,10 @@
-"use client";
-import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import Head from "next/head";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import InquiryModal from "@/components/common/InquiryModal";
 import SchoolHeader from "@/components/school/SchoolHeader";
 import SchoolOverview from "@/components/school/SchoolOverview";
+import SchoolAdmission from "@/components/school/SchoolAdmission"; // ✅ NEW
 import SchoolCourses from "@/components/school/SchoolCourses";
 import SchoolScholarship from "@/components/school/SchoolScholarship";
 import SchoolFacilities from "@/components/school/SchoolFacilities";
@@ -15,10 +14,11 @@ import SchoolMessage from "@/components/school/SchoolMessage";
 import SchoolAbout from "@/components/school/SchoolAbout";
 import SchoolMapAndSocial from "@/components/school/SchoolMapAndSocial";
 import SchoolFAQs from "@/components/school/SchoolFAQs";
-import { fetchSchoolBySlug } from "@/utils/api";
+import { useRef, useState, useEffect } from "react";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
+  { id: "admission", label: "Admissions" }, // ✅ Add this for tab if you want
   { id: "courses", label: "Courses" },
   { id: "scholarship", label: "Scholarship" },
   { id: "facilities", label: "Facilities" },
@@ -30,27 +30,10 @@ const SECTIONS = [
   { id: "faqs", label: "FAQs" },
 ];
 
-export default function SchoolSlugPage() {
-  const router = useRouter();
-  const slug = router.query.slug;
-
-  const [school, setSchool] = useState(null);
+export default function SchoolSlugPage({ school }) {
   const [active, setActive] = useState("overview");
   const sectionRefs = useRef({});
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (!slug) return;
-    fetchSchoolBySlug(slug)
-      .then((result) => {
-        if (result?.id) setSchool(result);
-        else setSchool(null);
-      })
-      .catch((err) => {
-        setSchool(null);
-        console.error(err);
-      });
-  }, [slug]);
 
   // Intersection observer for section highlight
   useEffect(() => {
@@ -80,38 +63,72 @@ export default function SchoolSlugPage() {
     }
   };
 
+  // --- SEO/OG fallback helpers ---
+  const metaTitle =
+    school?.meta_title?.trim() ||
+    (school
+      ? `${school.name || ""}${school.address ? " - " + school.address : ""}${
+          school.district?.name ? ", " + school.district.name : ""
+        }`
+      : "School Info Nepal");
+  const metaDesc =
+    school?.meta_description?.trim() ||
+    (school
+      ? `Explore ${school.name || ""}${school.address ? ", " + school.address : ""}${
+          school.district?.name ? ", " + school.district.name : ""
+        } at School Info Nepal. View courses, facilities, scholarships, and more.`
+      : "Find the best schools in Nepal - explore courses, events, scholarships, and more.");
+  const ogTitle = school?.og_title?.trim() || metaTitle;
+  const ogDesc = school?.og_description?.trim() || metaDesc;
+  const ogImage =
+    school?.og_image ||
+    school?.cover_photo ||
+    school?.logo ||
+    "https://schoolinfonepal.com/default-og-image.jpg";
+
   return (
     <>
+      <Head>
+        <title>{metaTitle}</title>
+        <meta name="description" content={metaDesc} />
+        {/* OG tags */}
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDesc} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://schoolinfonepal.com/school/${school?.slug || ""}`} />
+        {/* Twitter card */}
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDesc} />
+        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
       <Header />
 
-      {/* Inquiry modal, top-level for sticky/scroll bug avoidance */}
+      {/* Inquiry modal */}
       <InquiryModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         school={school}
       />
 
-      <div className="bg-gray-50 min-h-screen">
-        {/* School Header */}
+      <div className="bg-gray-50 min-h-screen w-full">
         <SchoolHeader school={school} />
 
-        <div className="max-w-7xl mx-auto flex gap-10 px-4 md:px-8">
+        <div className="w-full flex flex-col lg:flex-row max-w-screen-2xl mx-auto gap-0 lg:gap-6 px-4 sm:px-6 md:px-8 lg:px-10">
           {/* Sticky left nav */}
-          <nav className="hidden lg:block w-60 flex-shrink-0 pt-6 sticky top-24 self-start">
+          <nav className="hidden lg:block flex-shrink-0 pt-6 sticky top-28 self-start w-60">
             <ul className="flex flex-col gap-2">
               {SECTIONS.map((s) => (
                 <li key={s.id}>
                   <button
-                    className={`w-full text-left px-4 py-2 rounded-lg font-medium transition ${
+                    className={`w-full text-left px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
                       active === s.id
-                        ? "bg-blue-50 text-blue-700 shadow"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-blue-50 text-[#1868ae] font-semibold"
+                        : "text-gray-600 hover:bg-gray-100"
                     }`}
                     onClick={() => scrollToSection(s.id)}
                   >
-                    {active === s.id && (
-                      <span className="inline-block w-2 h-2 rounded-full bg-blue-600 mr-2 align-middle" />
-                    )}
                     {s.label}
                   </button>
                 </li>
@@ -119,14 +136,18 @@ export default function SchoolSlugPage() {
             </ul>
           </nav>
 
-          {/* Main content - only render sections when school?.id is loaded */}
-          <main className="flex-1 flex flex-col gap-10">
+          {/* Main content */}
+          <main className="flex-1 flex flex-col gap-12 py-6 md:py-8 lg:py-12 px-4 sm:px-6">
             {!school?.id ? (
               <div className="text-center text-gray-400 py-12 text-lg">Loading school details...</div>
             ) : (
               <>
                 <div ref={(el) => (sectionRefs.current.overview = el)} id="overview">
                   <SchoolOverview school={school} />
+                </div>
+                {/* --- Insert Admission Section Above Courses --- */}
+                <div ref={(el) => (sectionRefs.current.admission = el)} id="admission">
+                  <SchoolAdmission school={school} />
                 </div>
                 <div ref={(el) => (sectionRefs.current.courses = el)} id="courses">
                   <SchoolCourses school={school} />
@@ -163,4 +184,23 @@ export default function SchoolSlugPage() {
       <Footer />
     </>
   );
+}
+
+// --- Server-Side Fetching (SEO-Ready) ---
+export async function getServerSideProps({ params }) {
+  const { slug } = params;
+  // API endpoint is /api/schools/<slug>/ as per your backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+  let school = null;
+  try {
+    const res = await fetch(`${API_BASE_URL}/schools/${slug}/`);
+    if (res.ok) {
+      school = await res.json();
+    }
+  } catch (e) {
+    // leave school as null
+  }
+  return {
+    props: { school },
+  };
 }

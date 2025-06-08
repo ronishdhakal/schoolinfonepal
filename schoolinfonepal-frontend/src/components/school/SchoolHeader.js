@@ -1,73 +1,106 @@
-// src/components/school/SchoolHeader.js
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { CheckCircle2 } from "lucide-react";
+import { MessageSquare, MapPin, BadgeCheck } from "lucide-react";
 import InquiryModal from "@/components/common/InquiryModal";
+import { API_BASE_URL } from "@/utils/api";
 
-export default function SchoolHeader({ school }) {
+const SchoolHeader = ({ school }) => {
+  const [isScrolled, setIsScrolled] = useState(false);
   const [inquiryOpen, setInquiryOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   if (!school) return null;
 
-  return (
-    <section className="relative bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-      {/* Cover Photo */}
-      <div className="relative w-full h-56 sm:h-64 md:h-72 lg:h-80 bg-gray-200">
-        {school.cover_photo ? (
-          <Image
-            src={school.cover_photo}
-            alt={school.name + " Cover"}
-            fill
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-2xl">
-            No Cover Photo
-          </div>
-        )}
-        {/* Logo */}
-        <div className="absolute left-6 -bottom-10 z-10">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-white shadow-xl flex items-center justify-center overflow-hidden border-4 border-white">
-            {school.logo ? (
-              <Image
-                src={school.logo}
-                alt={school.name + " Logo"}
-                width={128}
-                height={128}
-                className="object-contain w-full h-full"
-                priority
-              />
-            ) : (
-              <span className="text-gray-400 text-5xl">🏫</span>
-            )}
-          </div>
-        </div>
-      </div>
+  const getFullUrl = (url) =>
+    url?.startsWith("http") ? url : `${API_BASE_URL}${url || ""}`;
 
-      {/* Main Header Content */}
-      <div className="pt-14 pl-6 pr-6 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-white">
-        <div className="flex items-center gap-4 min-w-0">
-          {/* Name and Verification */}
-          <div className="flex flex-col gap-2 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 truncate">
-                {school.name}
-              </h1>
+  const coverImage = getFullUrl(school.cover_photo);
+  const logoImage = getFullUrl(school.logo);
+
+  // Show cover photo only for verified school (like consultancy)
+  const showCover = school.verification;
+
+  return (
+    <header
+      className="relative w-full flex flex-col justify-end overflow-hidden"
+      aria-labelledby="school-header-title"
+    >
+      {/* Cover Photo (like consultancy, only if verified) */}
+      {showCover && (
+        <div className="relative w-full aspect-[16/4] bg-white">
+          {school.cover_photo ? (
+            <Image
+              src={coverImage}
+              alt={`${school.name} cover image`}
+              fill
+              className="object-cover bg-gray-100"
+              priority
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center text-gray-400">
+              <span className="text-lg font-light italic">No Cover Photo Available</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Header Info Block */}
+      <div
+        className={`relative w-full max-w-[2000px] bg-white px-4 sm:px-8 md:px-12 py-6 sm:py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 rounded-t-3xl transition-all duration-300 ${
+          isScrolled ? "shadow-2xl" : "shadow-lg"
+        }`}
+        style={{ marginTop: showCover ? "-1rem" : "0" }}
+      >
+        {/* Left: Logo and Info */}
+        <div className="flex items-center gap-5 w-full sm:w-auto">
+          {/* Logo (overlaps if cover) */}
+          {school.logo ? (
+            <div className={`relative ${showCover ? "-mt-16 sm:-mt-24" : ""} w-24 h-24 sm:w-28 sm:h-28 bg-white p-2.5 rounded-2xl shadow-xl border-4 border-white transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
+              <Image
+                src={logoImage}
+                alt={`${school.name} logo`}
+                fill
+                className="object-contain rounded-xl"
+              />
+            </div>
+          ) : (
+            <div className="w-24 h-24 bg-gray-200 flex items-center justify-center rounded-xl text-sm text-gray-500">
+              No Logo
+            </div>
+          )}
+
+          {/* Name and Location */}
+          <div className="flex-1 pt-2 sm:pt-0">
+            <h1
+              id="school-header-title"
+              className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 flex items-center flex-wrap"
+            >
+              {school.name}
               {school.verification && (
-                <span title="Verified" className="inline-flex items-center">
-                  <CheckCircle2 className="text-blue-600 w-6 h-6" />
+                <span
+                  className="ml-2"
+                  title="Verified School"
+                  aria-label="Verified School"
+                >
+                  <BadgeCheck className="h-6 w-6 md:h-7 md:w-7 text-[#4c9bd5]" />
                 </span>
               )}
-            </div>
-            {/* Address and District */}
-            <div className="flex items-center gap-3 flex-wrap text-gray-600">
+            </h1>
+            <div className="flex items-center flex-wrap text-gray-500 text-sm md:text-base mt-2 gap-2">
               {school.address && (
-                <span className="inline-block">{school.address}</span>
+                <span className="flex items-center">
+                  <MapPin className="h-5 w-5 mr-1 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                  <span className="line-clamp-1">{school.address}</span>
+                </span>
               )}
               {school.district?.name && (
-                <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-semibold">
+                <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-0.5 ml-2 font-semibold text-xs md:text-sm">
                   {school.district.name}
                 </span>
               )}
@@ -75,23 +108,27 @@ export default function SchoolHeader({ school }) {
           </div>
         </div>
 
-        {/* Inquiry Button */}
-        <div className="mt-4 md:mt-0 flex-shrink-0">
+        {/* CTA Button for Verified only (like consultancy) */}
+        {school.verification && (
           <button
-            className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition"
             onClick={() => setInquiryOpen(true)}
+            className="w-full sm:w-auto px-6 py-3.5 bg-[#4c9bd5] hover:bg-[#3a8cc1] text-white font-medium rounded-xl shadow-md flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#4c9bd5] focus:ring-opacity-50"
+            aria-label={`Inquire about ${school.name}`}
           >
-            Inquire Now
+            <MessageSquare className="h-5 w-5 mr-2" />
+            <span>Ask a Question</span>
           </button>
-        </div>
-      </div>
+        )}
 
-      {/* Inquiry Modal */}
-      <InquiryModal
-        open={inquiryOpen}
-        onClose={() => setInquiryOpen(false)}
-        school={school}
-      />
-    </section>
+        {/* Inquiry Modal */}
+        <InquiryModal
+          open={inquiryOpen}
+          onClose={() => setInquiryOpen(false)}
+          school={school}
+        />
+      </div>
+    </header>
   );
-}
+};
+
+export default SchoolHeader;

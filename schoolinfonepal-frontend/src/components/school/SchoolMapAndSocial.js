@@ -13,6 +13,11 @@ function getSocialIcon(platform) {
   return <Globe className="w-6 h-6" />;
 }
 
+// Helper: Capitalize first letter, rest lowercase (even if value is all uppercase)
+function capitalizeFirst(str = "") {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+}
+
 export default function SchoolMapAndSocial({ school }) {
   const map = school?.map_link?.trim();
   const socials = school?.social_media?.filter(s => s.url?.trim()) || [];
@@ -20,11 +25,9 @@ export default function SchoolMapAndSocial({ school }) {
   // Helper: extract src from embed HTML if pasted, else treat as URL
   let mapSrc = "";
   if (map?.includes("iframe")) {
-    // Extract src attribute from the embed code
     const match = map.match(/src=['"]([^'"]+)['"]/);
     mapSrc = match ? match[1] : "";
   } else if (map) {
-    // Convert Google Maps share URL to embed if needed
     if (map.includes("/maps/")) {
       if (map.includes("/maps/place/") || map.includes("/maps/@")) {
         mapSrc = map.replace("/maps/", "/maps/embed?");
@@ -41,15 +44,14 @@ export default function SchoolMapAndSocial({ school }) {
   if (!mapSrc && !socials.length) return null;
 
   return (
-    <section className="bg-white rounded-2xl shadow mb-8 px-6 py-7">
+    <section className="mb-10 px-2 md:px-0">
       {/* Map Section */}
       {mapSrc && (
-        <div className="mb-7">
-          <div className="flex items-center gap-3 mb-4">
-            <Globe className="w-7 h-7 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Location</h2>
-          </div>
-          <div className="aspect-video w-full rounded-xl overflow-hidden border shadow">
+        <div className="mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#1868ae] mb-4 font-sans tracking-tight">
+            Location
+          </h2>
+          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-blue-100">
             <iframe
               src={mapSrc}
               title="School Map"
@@ -57,6 +59,7 @@ export default function SchoolMapAndSocial({ school }) {
               allowFullScreen
               className="w-full h-full"
               referrerPolicy="no-referrer-when-downgrade"
+              style={{ border: 0 }}
             />
           </div>
         </div>
@@ -64,10 +67,8 @@ export default function SchoolMapAndSocial({ school }) {
 
       {/* Social Media Section */}
       {socials.length > 0 && (
-        <>
-          <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-lg font-bold text-gray-900">Connect with us:</h3>
-          </div>
+        <div className="mt-2">
+          <h3 className="text-lg font-bold text-[#1868ae] mb-4 font-sans">Connect with us</h3>
           <div className="flex gap-4 flex-wrap">
             {socials.map((s) => (
               <a
@@ -75,15 +76,17 @@ export default function SchoolMapAndSocial({ school }) {
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-semibold transition"
-                title={s.platform}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 font-semibold rounded-full shadow-sm border border-blue-100 hover:bg-blue-200 hover:text-blue-900 transition focus:ring-2 focus:ring-blue-200"
+                title={capitalizeFirst(s.platform)}
               >
                 {getSocialIcon(s.platform)}
-                <span className="hidden sm:inline">{s.platform}</span>
+                <span className="hidden sm:inline text-base font-medium">
+                  {capitalizeFirst(s.platform)}
+                </span>
               </a>
             ))}
           </div>
-        </>
+        </div>
       )}
     </section>
   );

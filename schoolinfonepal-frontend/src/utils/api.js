@@ -1290,3 +1290,16 @@ export const createPreRegistrationInquiry = async (data) => {
   if (!res.ok) throw new Error("Failed to submit pre-registration");
   return res.json();
 };
+
+
+export const fetchAdmissions = async (params = {}) => {
+  const url = new URL(`${API_BASE_URL}/admissions/`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.append(key, value);
+    }
+  });
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch admissions");
+  return res.json();
+};

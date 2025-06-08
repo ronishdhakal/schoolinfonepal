@@ -47,10 +47,14 @@ class UniversitySerializer(serializers.ModelSerializer):
 
 class CourseSerializer(serializers.ModelSerializer):
     university_name = serializers.CharField(source="university.name", read_only=True)
+    name = serializers.CharField()  # <-- ADD THIS if missing!
+    duration = serializers.CharField()  # <--- ADD THIS LINE
+
+
 
     class Meta:
         model = Course
-        fields = ['id', 'university_name']
+        fields = ['id', 'name', 'university_name', 'duration']
 
 class SchoolPhoneSerializer(serializers.ModelSerializer):
     class Meta:
