@@ -1,22 +1,18 @@
-"use client";
-import React from "react";
+"use client"
 
-const UniversityAbout = ({ university }) => {
-  if (!university || !university.about) return null;
+export default function UniversityAbout({ university }) {
+  if (!university || !university.about) return null
 
   return (
-    <section className="bg-white rounded-2xl shadow p-6 mb-8">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">About {university.name}</h2>
-      <div className="prose max-w-none text-gray-800 leading-relaxed">
-        {/* If about contains HTML, render as HTML; otherwise, as plain text */}
+    <section className="mb-8 bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b border-gray-100 pb-3">About {university.name}</h2>
+      <div className="text-gray-700 leading-relaxed">
         {/<[a-z][\s\S]*>/i.test(university.about) ? (
           <div dangerouslySetInnerHTML={{ __html: university.about }} />
         ) : (
-          <p>{university.about}</p>
+          <div className="whitespace-pre-line">{university.about}</div>
         )}
       </div>
     </section>
-  );
-};
-
-export default UniversityAbout;
+  )
+}

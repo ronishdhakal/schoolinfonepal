@@ -28,7 +28,6 @@ class UniversityFilter(django_filters.FilterSet):
         model = University
         fields = ['foreign_affiliation']
 
-
 class CourseFilter(django_filters.FilterSet):
     university = django_filters.CharFilter(field_name="university__slug", lookup_expr='iexact')
     level = django_filters.CharFilter(field_name="level__slug", lookup_expr='iexact')

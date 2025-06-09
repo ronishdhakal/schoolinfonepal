@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404
 from .models import Event
 from .serializers import EventSerializer
 from core.filters import EventFilter
+from core.pagination import StandardResultsSetPagination  # <--- make sure this is imported
+
 
 # ✅ Public List
 class EventListView(ListAPIView):
@@ -23,6 +25,7 @@ class EventListView(ListAPIView):
         'title', 'venue', 'organizer_custom',
         'organizer_school__name', 'organizer_university__name'
     ]
+    pagination_class = StandardResultsSetPagination  # <--- ADD THIS LINE
 
 # ✅ Public Detail
 class EventDetailView(RetrieveAPIView):

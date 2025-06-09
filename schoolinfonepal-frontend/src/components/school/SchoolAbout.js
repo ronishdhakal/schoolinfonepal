@@ -1,19 +1,17 @@
-// src/components/school/SchoolAbout.js
-"use client";
+"use client"
 
 export default function SchoolAbout({ school }) {
   const about = school?.about_college?.trim();
+  const schoolName = school?.name || "";
 
   if (!about) return null;
 
   return (
-    <section className="mb-10 px-2 md:px-0">
+    <section className="mb-8 bg-white rounded-lg shadow-sm p-6">
       <h2 className="text-2xl md:text-3xl font-bold text-[#1868ae] mb-4 font-sans tracking-tight">
-        About
+        About {schoolName}
       </h2>
-      <div className="text-gray-800 text-lg leading-relaxed whitespace-pre-line font-sans">
-        {about}
-      </div>
+      <div className="text-gray-700 leading-relaxed whitespace-pre-line">{about}</div>
     </section>
   );
 }

@@ -5,11 +5,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.pagination import PageNumberPagination
 import json
-
 
 from .models import University, UniversityGallery
 from .serializers import UniversitySerializer
+from core.filters import UniversityFilter
 from type.models import Type
 
 def safe_json_loads(val):
@@ -22,17 +24,40 @@ def safe_json_loads(val):
     except Exception:
         return []
 
+class UniversityPagination(PageNumberPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def university_list(request):
-    universities = University.objects.all().order_by('priority', 'name')
-    serializer = UniversitySerializer(universities, many=True)
+    queryset = University.objects.filter(status=True).order_by('priority', 'name')
+    
+    # Apply filters
+    filterset = UniversityFilter(request.GET, queryset=queryset)
+    filtered_qs = filterset.qs
+    
+    # Apply search
+    search = request.GET.get('search', '')
+    if search:
+        filtered_qs = filtered_qs.filter(name__icontains=search)
+    
+    # Apply pagination
+    paginator = UniversityPagination()
+    page = paginator.paginate_queryset(filtered_qs, request)
+    
+    if page is not None:
+        serializer = UniversitySerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+    serializer = UniversitySerializer(filtered_qs, many=True)
     return Response(serializer.data)
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def university_detail(request, slug):
-    university = get_object_or_404(University, slug=slug)
+    university = get_object_or_404(University, slug=slug, status=True)
     serializer = UniversitySerializer(university)
     return Response(serializer.data)
 
@@ -176,6 +201,7 @@ def university_delete(request, slug):
     return Response({"message": "University deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def university_dropdown(request):
-    universities = University.objects.all().values('id', 'name', 'slug')
+    universities = University.objects.filter(status=True).values('id', 'name', 'slug').order_by('name')
     return Response(universities)

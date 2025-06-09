@@ -58,12 +58,23 @@ export default function SchoolFilters({ filters, onChange }) {
           fetchTypes(),
           fetchCoursesDropdown(),
         ])
-        setLevels(levelsData || [])
-        setDistricts(districtsData || [])
-        setUniversities(universitiesData || [])
-        setTypes(typesData || [])
-        setCourses(coursesData || [])
+        setLevels(Array.isArray(levelsData) ? levelsData : [])
+        setDistricts(Array.isArray(districtsData) ? districtsData : [])
+setUniversities(
+  Array.isArray(universitiesData)
+    ? universitiesData
+    : (universitiesData && Array.isArray(universitiesData.results))
+      ? universitiesData.results
+      : []
+);
+        setTypes(Array.isArray(typesData) ? typesData : [])
+        setCourses(Array.isArray(coursesData) ? coursesData : [])
       } catch (error) {
+        setLevels([])
+        setDistricts([])
+        setUniversities([])
+        setTypes([])
+        setCourses([])
         console.error("Error loading filter data:", error)
       } finally {
         setLoading(false)
@@ -102,7 +113,9 @@ export default function SchoolFilters({ filters, onChange }) {
 
       {/* Filter Content */}
       <div
-        className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300 ${isFilterOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 md:max-h-[500px] md:opacity-100"}`}
+        className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300 ${
+          isFilterOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 md:max-h-[500px] md:opacity-100"
+        }`}
       >
         <div className="p-5">
           <div className="flex items-center justify-between mb-4">
@@ -138,11 +151,12 @@ export default function SchoolFilters({ filters, onChange }) {
                 onChange={(e) => onChange({ ...filters, level: e.target.value })}
               >
                 <option value="">All Levels</option>
-                {levels.map((level) => (
-                  <option key={level.id} value={level.slug}>
-                    {level.title}
-                  </option>
-                ))}
+                {Array.isArray(levels) &&
+                  levels.map((level) => (
+                    <option key={level.id} value={level.slug}>
+                      {level.title}
+                    </option>
+                  ))}
               </FilterSelect>
 
               <FilterSelect
@@ -151,11 +165,12 @@ export default function SchoolFilters({ filters, onChange }) {
                 onChange={(e) => onChange({ ...filters, district: e.target.value })}
               >
                 <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option key={district.id} value={district.slug}>
-                    {district.name}
-                  </option>
-                ))}
+                {Array.isArray(districts) &&
+                  districts.map((district) => (
+                    <option key={district.id} value={district.slug}>
+                      {district.name}
+                    </option>
+                  ))}
               </FilterSelect>
 
               <FilterSelect
@@ -164,11 +179,12 @@ export default function SchoolFilters({ filters, onChange }) {
                 onChange={(e) => onChange({ ...filters, university: e.target.value })}
               >
                 <option value="">All Universities</option>
-                {universities.map((university) => (
-                  <option key={university.id} value={university.slug}>
-                    {university.name}
-                  </option>
-                ))}
+                {Array.isArray(universities) &&
+                  universities.map((university) => (
+                    <option key={university.id} value={university.slug}>
+                      {university.name}
+                    </option>
+                  ))}
               </FilterSelect>
 
               <FilterSelect
@@ -177,11 +193,12 @@ export default function SchoolFilters({ filters, onChange }) {
                 onChange={(e) => onChange({ ...filters, type: e.target.value })}
               >
                 <option value="">All Types</option>
-                {types.map((type) => (
-                  <option key={type.id} value={type.slug}>
-                    {type.title}
-                  </option>
-                ))}
+                {Array.isArray(types) &&
+                  types.map((type) => (
+                    <option key={type.id} value={type.slug}>
+                      {type.title}
+                    </option>
+                  ))}
               </FilterSelect>
 
               <FilterSelect
@@ -190,11 +207,12 @@ export default function SchoolFilters({ filters, onChange }) {
                 onChange={(e) => onChange({ ...filters, course: e.target.value })}
               >
                 <option value="">All Courses</option>
-                {(Array.isArray(courses) ? courses : []).map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.name}
-                  </option>
-                ))}
+                {Array.isArray(courses) &&
+                  courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.name}
+                    </option>
+                  ))}
               </FilterSelect>
             </div>
           )}

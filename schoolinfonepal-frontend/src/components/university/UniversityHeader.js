@@ -1,68 +1,88 @@
-"use client";
-import Image from "next/image";
+"use client"
+import Image from "next/image"
+import { MapPin, BadgeCheck } from "lucide-react"
 
-// Helper: handle absolute and relative image URLs
 function getFullImageUrl(url) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") || "http://127.0.0.1:8000";
-  return `${BASE}${url}`;
+  if (!url) return ""
+  if (url.startsWith("http")) return url
+  const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") || "http://127.0.0.1:8000"
+  return `${BASE}${url}`
 }
 
-const UniversityHeader = ({ university }) => {
-  if (!university) return null;
+export default function UniversityHeader({ university }) {
+  if (!university) return null
 
   return (
-    <section className="relative w-full rounded-2xl shadow bg-white mb-8">
-      {/* Cover */}
-      <div className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden">
+    <header className="relative w-full flex flex-col justify-end overflow-hidden">
+      {/* Cover Photo */}
+      <div className="relative w-full aspect-[21/6] md:aspect-[21/5] bg-gray-100">
         {university.cover_photo ? (
           <Image
-            src={getFullImageUrl(university.cover_photo)}
-            alt={university.name + " Cover"}
+            src={getFullImageUrl(university.cover_photo) || "/placeholder.svg"}
+            alt={`${university.name} cover image`}
             fill
-            className="object-cover w-full h-full"
-            sizes="100vw"
+            className="object-cover"
             priority
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xl">
-            No Cover Photo
+          <div className="w-full h-full bg-gradient-to-r from-blue-50 to-gray-100 flex items-center justify-center text-gray-400">
+            <span className="text-lg font-light italic">No Cover Photo Available</span>
           </div>
         )}
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
       </div>
 
-      {/* Logo & info box, shifted right */}
-      <div className="flex flex-col items-start pl-36 md:pl-48">
-        <div className="relative -mt-14 z-10">
-          <div className="w-24 h-24 rounded-full bg-white shadow-md border-4 border-white flex items-center justify-center overflow-hidden">
-            {university.logo ? (
+      {/* Header Info Block */}
+      <div className="relative w-full bg-white px-6 sm:px-8 md:px-12 py-6 sm:py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 rounded-t-3xl shadow-md -mt-8">
+        {/* Left: Logo and Info */}
+        <div className="flex items-center gap-5 w-full sm:w-auto">
+          {/* Logo */}
+          {university.logo ? (
+            <div className="relative -mt-16 sm:-mt-24 bg-white p-2.5 rounded-xl shadow-md border-4 border-white transition-all hover:shadow-lg">
               <Image
-                src={getFullImageUrl(university.logo)}
-                alt={university.name + " Logo"}
-                width={96}
-                height={96}
-                className="object-contain"
+                src={getFullImageUrl(university.logo) || "/placeholder.svg"}
+                alt={`${university.name} logo`}
+                width={112}
+                height={112}
+                className="object-contain rounded-lg"
               />
-            ) : (
-              <span className="text-4xl text-gray-300">🏛️</span>
-            )}
-          </div>
-        </div>
-        {/* Info box below cover, right-aligned */}
-        <div className="flex flex-col items-start mt-2 mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1">{university.name}</h1>
-          <div className="text-gray-500 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 21l-4.243-4.243A8 8 0 1117.657 16.657z" />
-              <circle cx="12" cy="11" r="3" />
-            </svg>
-            <span>{university.address || "Address not specified"}</span>
+            </div>
+          ) : (
+            <div
+              className="bg-blue-50 flex items-center justify-center rounded-xl text-sm text-gray-500 -mt-16 sm:-mt-24 border-4 border-white shadow-md"
+              style={{ width: "112px", height: "112px" }}
+            >
+              No Logo
+            </div>
+          )}
+
+          {/* Name and Location */}
+          <div className="flex-1 pt-2 sm:pt-0">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 flex items-center flex-wrap">
+              {university.name}
+              {university.verification && (
+                <span className="ml-2" title="Verified University">
+                  <BadgeCheck className="text-[#1ca3fd]" style={{ width: "28px", height: "28px" }} />
+                </span>
+              )}
+            </h1>
+            <div className="flex items-center flex-wrap text-gray-600 text-sm md:text-base mt-2 gap-2">
+              {university.address && (
+                <span className="flex items-center">
+                  <MapPin className="mr-1 flex-shrink-0 text-[#1ca3fd]" style={{ width: "20px", height: "20px" }} />
+                  <span>{university.address}</span>
+                </span>
+              )}
+              {university.foreign_affiliation && (
+                <span className="bg-blue-50 text-gray-800 rounded-full px-3 py-1 text-xs md:text-sm border border-blue-100">
+                  Foreign Affiliated
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </section>
-  );
-};
-
-export default UniversityHeader;
+    </header>
+  )
+}

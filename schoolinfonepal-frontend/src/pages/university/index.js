@@ -1,63 +1,95 @@
-"use client";
-import Head from "next/head";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import { useEffect, useState } from "react";
-import UniversityFilter from "@/components/university/UniversityFilter";
-import UniversityCard from "@/components/university/UniversityCard";
-import Pagination from "@/components/common/Pagination";
-import { fetchUniversities } from "@/utils/api";
+"use client"
+import Header from "@/components/layout/Header"
+import Footer from "@/components/layout/Footer"
+import Head from "next/head"
+import { useEffect, useState } from "react"
+import UniversityFilter from "@/components/university/UniversityFilter"
+import UniversityCard from "@/components/university/UniversityCard"
+import Pagination from "@/components/common/Pagination"
+import InquiryModal from "@/components/common/InquiryModal"
+import EmptyState from "@/components/common/EmptyState"
+import LoadingState from "@/components/common/LoadingState"
+import { fetchUniversities } from "@/utils/api"
+import { GraduationCap, Search } from "lucide-react"
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 12
 
-export default function UniversityListPage() {
-  const [universities, setUniversities] = useState([]);
-  const [filters, setFilters] = useState({
-    foreign_affiliation: "", // keep as "" (not null or undefined)
-  });
+export default function UniversityListPage({ initialUniversities, initialCount, initialPage, initialFilters }) {
+  const [universities, setUniversities] = useState(initialUniversities || [])
+  const [filters, setFilters] = useState(
+    initialFilters || {
+      foreign_affiliation: "",
+    },
+  )
+  const [searchTerm, setSearchTerm] = useState("")
   const [pagination, setPagination] = useState({
-    page: 1,
-    count: 0,
-  });
-  const [loading, setLoading] = useState(true);
+    page: initialPage || 1,
+    count: initialCount || 0,
+  })
+  const [loading, setLoading] = useState(false)
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedUniversity, setSelectedUniversity] = useState(null)
 
   // SEO meta
-  const pageTitle = "All Universities | School Info Nepal";
+  const pageTitle = "Top Universities in Nepal | School Info Nepal"
   const pageDescription =
-    "Explore all universities in Nepal, including foreign-affiliated ones. Filter and discover universities easily with School Info Nepal.";
-  const pageUrl = "https://schoolinfonepal.com/university";
-  const pageImage = "/school-info-nepal-og.png"; // Update as needed
+    "Explore the best universities in Nepal, including foreign-affiliated institutions. Filter and discover universities easily with School Info Nepal."
+  const pageUrl = "https://schoolinfonepal.com/university"
+  const pageImage = "/school-info-nepal-og.png"
 
-  // Reset page to 1 if filters change
+  // Reset to page 1 if filters change
   useEffect(() => {
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [filters]);
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }, [filters, searchTerm])
 
   // Fetch universities when filters or page changes
   useEffect(() => {
-    setLoading(true);
+    // Don't refetch on initial SSR mount
+    if (pagination.page === initialPage && JSON.stringify(filters) === JSON.stringify(initialFilters) && !searchTerm)
+      return
 
-    // Filter out keys with "" (All) before sending to API
-    const filterQuery = {};
-    if (filters.foreign_affiliation === "true" || filters.foreign_affiliation === "false") {
-      filterQuery.foreign_affiliation = filters.foreign_affiliation;
+    setLoading(true)
+    const cleanFilters = Object.fromEntries(
+      Object.entries(filters).filter(([_, v]) => v !== "" && v !== null && v !== undefined),
+    )
+
+    const params = {
+      ...cleanFilters,
+      page: pagination.page,
+      page_size: PAGE_SIZE,
     }
 
-    fetchUniversities({ ...filterQuery, page: pagination.page, page_size: PAGE_SIZE })
+    if (searchTerm) {
+      params.search = searchTerm
+    }
+
+    fetchUniversities(params)
       .then((res) => {
-        setUniversities(res.results || res || []);
+        setUniversities(res.results || res || [])
         setPagination((prev) => ({
           ...prev,
           count: res.count || (Array.isArray(res) ? res.length : 0),
-        }));
+        }))
       })
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line
-  }, [filters, pagination.page]);
+      .catch((error) => {
+        console.error("Error fetching universities:", error)
+      })
+      .finally(() => setLoading(false))
+  }, [filters, pagination.page, searchTerm])
 
-  // Optional: card click handler
-  function handleCardClick(university) {
-    // e.g., router.push(`/university/${university.slug}`)
+  // Handler for Apply button
+  function handleApply(university) {
+    setSelectedUniversity(university)
+    setModalOpen(true)
+  }
+
+  // Handler for search
+  function handleSearch(e) {
+    e.preventDefault()
+    const formData = new FormData(e.target)
+    setSearchTerm(formData.get("search") || "")
   }
 
   return (
@@ -65,13 +97,11 @@ export default function UniversityListPage() {
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-        {/* Open Graph */}
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={pageImage} />
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
@@ -81,38 +111,137 @@ export default function UniversityListPage() {
 
       <Header />
 
-      <main className="min-h-screen max-w-7xl mx-auto px-4 md:px-8 py-10">
-        <h1 className="text-3xl font-bold text-blue-700 mb-6">All Universities</h1>
-        <UniversityFilter filters={filters} setFilters={setFilters} />
+      <main className="bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          {/* Page Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              <GraduationCap size={20} className="text-[#1ca3fd]" />
+              <h1 className="text-3xl font-bold text-gray-900">Top Universities in Nepal</h1>
+            </div>
+            <p className="text-gray-600 max-w-3xl">
+              Explore the best universities in Nepal, including foreign-affiliated institutions. Find detailed
+              information about courses, facilities, and more.
+            </p>
+          </div>
 
-        {loading && <div className="text-gray-500 py-10 text-center">Loading...</div>}
-        {!loading && !universities.length && (
-          <div className="text-gray-400 py-10 text-center">No universities found.</div>
-        )}
+          {/* Search Bar */}
+          <div className="mb-8">
+            <form onSubmit={handleSearch} className="relative max-w-2xl">
+              <div className="relative">
+                <input
+                  type="text"
+                  name="search"
+                  placeholder="Search universities..."
+                  defaultValue={searchTerm}
+                  className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1ca3fd] focus:border-[#1ca3fd]"
+                />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                  <Search size={18} className="text-gray-400" />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-[#1ca3fd] text-white text-sm font-medium rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Search
+              </button>
+            </form>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {!loading &&
-            universities.map((university) => (
-              <UniversityCard
-                key={university.id}
-                university={university}
-                onClick={handleCardClick}
-              />
-            ))}
+          {/* Filters */}
+          <UniversityFilter filters={filters} onChange={setFilters} />
+
+          {/* Results Count */}
+          {!loading && (
+            <div className="mb-6 text-sm text-gray-600">
+              Showing <span className="font-medium">{universities.length}</span> of{" "}
+              <span className="font-medium">{pagination.count}</span> universities
+              {(filters.foreign_affiliation || searchTerm) && <span> matching your criteria</span>}
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && <LoadingState />}
+
+          {/* Empty State */}
+          {!loading && !universities.length && (
+            <EmptyState
+              message="No universities found"
+              description={
+                filters.foreign_affiliation || searchTerm
+                  ? "Try adjusting your filters or search criteria."
+                  : "There are no universities available at the moment."
+              }
+            />
+          )}
+
+          {/* Universities Grid */}
+          {!loading && universities.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {universities.map((university) => (
+                <UniversityCard key={university.id} university={university} onApply={handleApply} />
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!loading && pagination.count > PAGE_SIZE && (
+            <Pagination
+              current={pagination.page}
+              total={pagination.count}
+              pageSize={PAGE_SIZE}
+              onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+            />
+          )}
+
+          {/* Inquiry Modal */}
+          {modalOpen && selectedUniversity && (
+            <InquiryModal
+              open={modalOpen}
+              onClose={() => setModalOpen(false)}
+              university={{ id: selectedUniversity.id, name: selectedUniversity.name }}
+            />
+          )}
         </div>
-
-        {/* Pagination */}
-        {!loading && pagination.count > PAGE_SIZE && (
-          <Pagination
-            current={pagination.page}
-            total={pagination.count}
-            pageSize={PAGE_SIZE}
-            onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-          />
-        )}
       </main>
 
       <Footer />
     </>
-  );
+  )
+}
+
+// SSR for Universities list
+export async function getServerSideProps(context) {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api"
+  const { foreign_affiliation = "", page = "1" } = context.query || {}
+
+  let initialUniversities = []
+  let initialCount = 0
+  const initialPage = Number.parseInt(page) || 1
+
+  try {
+    const params = new URLSearchParams({
+      foreign_affiliation,
+      page: initialPage,
+      page_size: PAGE_SIZE,
+    })
+    const res = await fetch(`${API_BASE_URL}/universities/?${params.toString()}`)
+    if (res.ok) {
+      const data = await res.json()
+      initialUniversities = data.results || []
+      initialCount = data.count || 0
+    }
+  } catch (e) {
+    // Fail silently: initialUniversities stays empty
+  }
+
+  return {
+    props: {
+      initialUniversities,
+      initialCount,
+      initialPage,
+      initialFilters: { foreign_affiliation },
+    },
+  }
 }

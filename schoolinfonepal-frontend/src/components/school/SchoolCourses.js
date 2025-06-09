@@ -1,87 +1,77 @@
-"use client";
-import { useState } from "react";
-import InquiryModal from "@/components/common/InquiryModal";
-import PreRegistrationInquiryModal from "@/components/common/PreRegistrationInquiryModal";
-import Link from "next/link";
-import {
-  GraduationCap,
-  Building2,
-  Clock,
-  Mail,
-  Banknote,
-} from "lucide-react";
+"use client"
+import Link from "next/link"
+import { useState } from "react"
+import InquiryModal from "@/components/common/InquiryModal"
+import PreRegistrationInquiryModal from "@/components/common/PreRegistrationInquiryModal"
+import { GraduationCap, Building2, Clock, Mail, Banknote } from "lucide-react"
 
 export default function SchoolCourses({ school }) {
-  const [openInquiryId, setOpenInquiryId] = useState(null);
+  const [openInquiryId, setOpenInquiryId] = useState(null)
+  const courses = school?.school_courses_display || []
 
-  const level = school?.level?.title || school?.level_text || "";
-  const courses = school?.school_courses_display || [];
-
-  if (!courses.length) return null;
+  if (!courses.length) return null
 
   return (
-    <section className="p-3 md:p-6 mb-6 border border-gray-100 rounded-xl bg-white">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 md:mb-6">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+    <section className="mb-8 bg-white rounded-lg shadow-sm p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#1868ae] mb-4 font-sans tracking-tight">
           Courses Offered
         </h2>
-        {level && (
-          <span className="bg-gray-50 text-blue-600 rounded-full px-3 py-1 text-sm font-medium">
-            {level}
+        {school?.level_text && (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+            {school.level_text}
           </span>
         )}
       </div>
 
-      {/* Course List */}
-      <div className="flex flex-col gap-3 md:gap-4">
+      <div className="space-y-4">
         {courses.map((sc) => {
-          // Prefer sc.course.slug if available
-          const slug = sc.course?.slug || sc.slug || "";
-          return (
-            <div
-              key={sc.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 md:p-4 rounded-xl border border-gray-200 bg-white group transition-all duration-200 shadow-none hover:shadow-lg hover:border-blue-200"
-              style={{ position: "relative" }}
-            >
-              {/* Left: Course Info */}
+          const slug = sc.course?.slug || sc.slug || ""
+          const courseName = sc.course?.name || sc.course_name || sc.name || "Course"
+          const university = sc.course?.university_name || sc.university_name
+          const duration = sc.course?.duration || sc.duration || "—"
+          const fee =
+            sc.fee !== null && sc.fee !== undefined && sc.fee !== ""
+              ? `Rs. ${Number(sc.fee).toLocaleString()}`
+              : ""
+
+          // Wrap only if we have a valid slug
+          const cardContent = (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <Link
-                  href={slug ? `/course/${slug}` : "#"}
-                  className="text-base md:text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2 hover:text-blue-700 transition-colors truncate no-underline"
-                  title={sc.course?.name || sc.course_name || sc.name || "Course"}
-                  style={{ textDecoration: "none" }}
-                  tabIndex={slug ? 0 : -1}
-                >
-                  <GraduationCap className="w-5 h-5 text-blue-500" />
-                  {sc.course?.name || sc.course_name || sc.name || "Course"}
-                </Link>
-                {(sc.course?.university_name || sc.university_name) && (
-                  <div className="flex items-center gap-1 text-gray-500 text-xs font-medium mt-1">
-                    <Building2 className="w-4 h-4 text-blue-300" />
-                    <span className="bg-white border border-gray-100 px-2 py-1 rounded-full text-xs">
-                      {sc.course?.university_name || sc.university_name}
-                    </span>
-                  </div>
-                )}
-                {sc.fee !== null && sc.fee !== undefined && sc.fee !== "" && (
-                  <div className="flex items-center gap-1 mt-1 text-gray-700 text-sm">
-                    <Banknote className="w-4 h-4 text-green-600" />
-                    <span>Rs. {Number(sc.fee).toLocaleString()}</span>
-                  </div>
-                )}
+                <div className="text-lg font-semibold flex items-center gap-2 mb-1 text-[#1868ae] group-hover:underline">
+                  <GraduationCap className="text-[#1ca3fd] flex-shrink-0" />
+                  {courseName}
+                </div>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
+                  {university && (
+                    <div className="flex items-center gap-1">
+                      <Building2 className="text-[#1ca3fd]" />
+                      <span>{university}</span>
+                    </div>
+                  )}
+                  {fee && (
+                    <div className="flex items-center gap-1">
+                      <Banknote className="text-[#1ca3fd]" />
+                      <span>{fee}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              {/* Right: Duration & Apply */}
-              <div className="flex flex-row items-center gap-2 sm:gap-4 flex-shrink-0 mt-2 sm:mt-0">
-                <span className="flex items-center gap-1 bg-blue-50 text-blue-800 font-medium px-3 py-1.5 rounded-full text-sm border border-blue-200">
-                  <Clock className="w-4 h-4" />
-                  {sc.course?.duration || sc.duration || "—"}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="flex items-center gap-1 bg-blue-50 text-gray-800 px-3 py-1 rounded-full text-sm border border-blue-100">
+                  <Clock className="text-[#1ca3fd]" />
+                  {duration}
                 </span>
                 <button
-                  className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-full text-sm transition-colors active:scale-95"
-                  onClick={() => setOpenInquiryId(sc.id)}
+                  className="flex items-center gap-1 bg-[#1ca3fd] hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                  onClick={e => {
+                    e.preventDefault() // prevent Link navigation when clicking button
+                    e.stopPropagation()
+                    setOpenInquiryId(sc.id)
+                  }}
                 >
-                  <Mail className="w-4 h-4" />
+                  <Mail />
                   Apply
                 </button>
                 {openInquiryId === sc.id && (
@@ -94,26 +84,36 @@ export default function SchoolCourses({ school }) {
                   />
                 )}
               </div>
-              {/* Optional blue highlight on hover */}
-              <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-blue-100 opacity-0 group-hover:opacity-60 transition" />
             </div>
-          );
+          )
+
+          return slug ? (
+            <Link
+              key={sc.id}
+              href={`/course/${slug}`}
+              className="block p-4 rounded-lg border border-gray-100 hover:border-[#1ca3fd] hover:shadow-sm transition-all group bg-white"
+              tabIndex={0}
+            >
+              {cardContent}
+            </Link>
+          ) : (
+            <div
+              key={sc.id}
+              className="p-4 rounded-lg border border-gray-100 bg-white"
+            >
+              {cardContent}
+            </div>
+          )
         })}
       </div>
 
-      {/* Pre-Registration Form */}
-      <div className="p-3 md:p-6 rounded-xl border border-gray-100 mt-6 bg-white">
-        <div className="font-semibold text-base md:text-lg text-gray-900 mb-3 flex items-center gap-2">
-          <Mail className="w-5 h-5" />
+      <div className="mt-6 p-4 rounded-lg border border-gray-100 bg-gray-50">
+        <div className="text-lg text-gray-900 mb-3 flex items-center gap-2">
+          <Mail className="text-[#1ca3fd]" />
           Pre-Registration Form
         </div>
-        <PreRegistrationInquiryModal
-          open={true}
-          onClose={() => {}}
-          school={school}
-          course={null}
-        />
+        <PreRegistrationInquiryModal open={true} onClose={() => {}} school={school} course={null} />
       </div>
     </section>
-  );
+  )
 }

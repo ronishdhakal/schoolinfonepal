@@ -4,19 +4,19 @@ from .models import University, UniversityPhone, UniversityEmail, UniversityGall
 from type.models import Type
 
 # --- Minimal Serializers ---
-from course.models import Course
-from school.models import School
-
 class CourseMinimalSerializer(serializers.ModelSerializer):
+    level_name = serializers.CharField(source='level.title', read_only=True)
+    discipline_name = serializers.CharField(source='disciplines.first.name', read_only=True)
+    
     class Meta:
-        model = Course
-        fields = ['id', 'name', 'slug', 'duration', 'level']
+        model = None  # Will be set dynamically
+        fields = ['id', 'name', 'slug', 'duration', 'level_name', 'discipline_name']
 
 class SchoolMinimalSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source='district.name', read_only=True)
 
     class Meta:
-        model = School
+        model = None  # Will be set dynamically
         fields = [
             'id', 'name', 'slug', 'logo', 'cover_photo',
             'address', 'district', 'district_name', 'verification'
@@ -49,9 +49,12 @@ class UniversitySerializer(serializers.ModelSerializer):
     )
     type_name = serializers.CharField(source='type.name', read_only=True)
 
-    # --- ADD THESE FIELDS ---
+    # Add these fields for related data
     courses = serializers.SerializerMethodField()
     schools = serializers.SerializerMethodField()
+    
+    # Add verification field to match frontend expectations
+    verification = serializers.BooleanField(source='is_verified', read_only=True)
 
     class Meta:
         model = University
@@ -61,26 +64,32 @@ class UniversitySerializer(serializers.ModelSerializer):
             'salient_features', 'about', 'priority',
             'meta_title', 'meta_description',
             'og_image', 'og_title', 'og_description',
-            'is_verified', 'foreign_affiliated',
+            'is_verified', 'verification', 'foreign_affiliated',
             'created_at', 'updated_at', 'status',
-            'courses', 'schools',   # <-- new fields!
+            'courses', 'schools',
         ]
-        read_only_fields = ['slug', 'created_at', 'updated_at']
+        read_only_fields = ['slug', 'created_at', 'updated_at', 'verification']
 
-    # ----------- Courses and Schools ----------
     def get_courses(self, obj):
-        # Assumes: Course model has university = ForeignKey(University)
-        from course.models import Course  # avoid circular import
-        courses = Course.objects.filter(university=obj)
-        return CourseMinimalSerializer(courses, many=True).data
+        try:
+            from course.models import Course
+            # Removed status=True!
+            courses = Course.objects.filter(university=obj)[:10]
+            CourseMinimalSerializer.Meta.model = Course
+            return CourseMinimalSerializer(courses, many=True).data
+        except ImportError:
+            return []
 
     def get_schools(self, obj):
-        # Assumes: School model has universities = ManyToManyField(University, related_name="schools")
-        from school.models import School  # avoid circular import
-        schools = obj.schools.all()
-        return SchoolMinimalSerializer(schools, many=True).data
+        try:
+            from school.models import School
+            # Removed status=True!
+            schools = obj.schools.all()[:10]
+            SchoolMinimalSerializer.Meta.model = School
+            return SchoolMinimalSerializer(schools, many=True).data
+        except (ImportError, AttributeError):
+            return []
 
-    # ----- (keep your safe_json_loads, create, update logic below) -----
     def safe_json_loads(self, raw, fallback):
         if not raw:
             return fallback

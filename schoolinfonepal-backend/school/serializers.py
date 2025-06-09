@@ -38,12 +38,12 @@ class TypeSerializer(serializers.ModelSerializer):
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
-        fields = ['id', 'name']
+        fields = ['id', 'name', ]
 
 class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = University
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'slug']
 
 class CourseSerializer(serializers.ModelSerializer):
     university_name = serializers.CharField(source="university.name", read_only=True)
