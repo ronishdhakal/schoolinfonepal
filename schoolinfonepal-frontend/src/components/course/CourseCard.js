@@ -1,34 +1,59 @@
-"use client";
-import React from "react";
-import Link from "next/link";
+"use client"
+import Link from "next/link"
+import { Clock, Building2, ArrowRight } from "lucide-react"
 
 const CourseCard = ({ course, onInquire }) => (
-  <div className="bg-white p-6 rounded-xl shadow-md flex flex-col gap-2 border border-gray-100">
-    <div>
-      {course.slug ? (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
+    {/* Card Header */}
+    <div className="p-5 border-b border-gray-100 flex-grow">
+      <div className="mb-3">
+        {course.university?.name && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <Building2 size={14} className="text-gray-500" />
+            <span className="text-sm text-gray-600 font-medium truncate">{course.university.name}</span>
+          </div>
+        )}
+
+        {course.slug ? (
+          <Link
+            href={`/course/${course.slug}`}
+            className="text-lg font-bold text-gray-800 hover:text-[#1ca3fd] transition-colors line-clamp-2"
+          >
+            {course.name}
+          </Link>
+        ) : (
+          <h3 className="text-lg font-bold text-gray-800 line-clamp-2">{course.name}</h3>
+        )}
+      </div>
+
+      {course.duration && (
+        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+          <Clock size={14} className="text-[#1ca3fd]" />
+          <span>{course.duration}</span>
+        </div>
+      )}
+    </div>
+
+    {/* Card Footer */}
+    <div className="p-4 bg-gray-50 flex items-center justify-between">
+      <button
+        className="flex items-center gap-1.5 px-4 py-2 bg-[#1ca3fd] text-white text-sm font-medium rounded-lg hover:bg-[#0b8de0] transition-colors"
+        onClick={() => onInquire(course)}
+      >
+        Inquire Now
+        <ArrowRight size={14} />
+      </button>
+
+      {course.slug && (
         <Link
           href={`/course/${course.slug}`}
-          className="text-lg font-bold text-blue-800 hover:underline transition"
+          className="text-sm text-gray-600 hover:text-[#1ca3fd] font-medium transition-colors"
         >
-          {course.name}
+          Details
         </Link>
-      ) : (
-        <h3 className="text-lg font-bold text-blue-800">{course.name}</h3>
       )}
-      <p className="text-sm text-gray-600">
-        {course.university?.name || "-"}
-      </p>
     </div>
-    <div className="text-sm text-gray-700">
-      Duration: <span className="font-semibold">{course.duration || "-"}</span>
-    </div>
-    <button
-      className="mt-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-      onClick={() => onInquire(course)}
-    >
-      Inquire
-    </button>
   </div>
-);
+)
 
-export default CourseCard;
+export default CourseCard

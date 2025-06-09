@@ -1,23 +1,23 @@
-"use client";
-import Image from "next/image";
-import Link from "next/link";
-import { BadgeCheck, MapPin } from "lucide-react";
-import { getFullImageUrl } from "@/utils/imageUrl"; // <- Make sure this util exists!
+"use client"
+import Image from "next/image"
+import Link from "next/link"
+import { BadgeCheck, MapPin, ArrowRight } from "lucide-react"
+import { getFullImageUrl } from "@/utils/imageUrl"
 
 export default function SchoolCard({ school, onApply }) {
-  const schoolUrl = `/school/${school.slug}`;
+  const schoolUrl = `/school/${school.slug}`
 
   return (
-    <div className="relative group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible hover:shadow-xl hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
-      <Link href={schoolUrl} className="block group">
+    <div className="relative group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col h-full">
+      <Link href={schoolUrl} className="block">
         {/* Cover Photo */}
-        <div className="relative w-full h-40 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden rounded-t-2xl">
+        <div className="relative w-full h-40 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
           {school.cover_photo ? (
             <Image
-              src={getFullImageUrl(school.cover_photo)}
+              src={getFullImageUrl(school.cover_photo) || "/placeholder.svg"}
               alt={`${school.name} Cover`}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300 rounded-t-2xl"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
               unoptimized
               priority
             />
@@ -39,12 +39,12 @@ export default function SchoolCard({ school, onApply }) {
         </div>
       </Link>
 
-      {/* LOGO: left-aligned, above name */}
-      <div className="relative z-20 flex items-center px-3" style={{ marginTop: "-2rem" }}>
-        <div className="bg-white rounded-2xl shadow-lg p-2 w-16 h-16 flex items-center justify-center border-2 border-white">
+      {/* Logo positioned over cover photo */}
+      <div className="relative z-20 flex items-center px-4" style={{ marginTop: "-2rem" }}>
+        <div className="bg-white rounded-xl shadow-lg p-2 w-16 h-16 flex items-center justify-center border-2 border-white">
           {school.logo ? (
             <Image
-              src={getFullImageUrl(school.logo)}
+              src={getFullImageUrl(school.logo) || "/placeholder.svg"}
               alt={school.name}
               width={48}
               height={48}
@@ -67,44 +67,44 @@ export default function SchoolCard({ school, onApply }) {
         </div>
       </div>
 
-      {/* Card Content with left-aligned text */}
-      <div className="pt-2 px-3 pb-3">
-        {/* Name row with verification icon */}
+      {/* Card Content */}
+      <div className="pt-2 px-4 pb-4 flex-grow flex flex-col">
+        {/* School Name with verification */}
         <div className="flex items-center gap-2 mb-2 min-w-0">
           <Link
             href={schoolUrl}
-            className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate flex items-center gap-1 min-w-0"
+            className="text-lg font-semibold text-gray-900 group-hover:text-[#1ca3fd] transition-colors truncate flex items-center gap-1 min-w-0"
             title={school.name}
           >
             <span className="truncate">{school.name}</span>
             {school.verification && (
-              <BadgeCheck className="w-5 h-5 text-[#4c9bd5] flex-shrink-0" title="Verified School" />
+              <BadgeCheck className="w-5 h-5 text-[#1ca3fd] flex-shrink-0" title="Verified School" />
             )}
           </Link>
         </div>
 
-        {/* Address & District as plain text, icon at left */}
+        {/* Address */}
         {(school.address || school.district?.name) && (
           <div className="flex items-center gap-1 mb-4 text-sm text-gray-600">
-            <MapPin className="w-4 h-4 text-gray-400 mr-1 flex-shrink-0" />
-            <span className="truncate">
-              {[school.address, school.district?.name].filter(Boolean).join(", ")}
-            </span>
+            <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <span className="truncate">{[school.address, school.district?.name].filter(Boolean).join(", ")}</span>
           </div>
         )}
-      </div>
 
-      {/* Inquiry Button at the bottom */}
-      <div className="px-3 pb-3 flex items-center justify-center">
+        {/* Spacer to push button to bottom */}
+        <div className="flex-grow"></div>
+
+        {/* Inquiry Button */}
         <button
           onClick={() => onApply && onApply(school)}
-          className="w-full px-4 py-3 bg-[#4c9bd5] hover:bg-[#1868ae] text-white font-semibold rounded-xl shadow-md transition-all duration-200 text-base flex items-center justify-center gap-2"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1ca3fd] hover:bg-[#0b8de0] text-white font-medium rounded-lg transition-colors shadow-sm"
           type="button"
-          aria-label={`Apply to ${school.name}`}
+          aria-label={`Inquire about ${school.name}`}
         >
-          <span>Inquire</span>
+          <span>Inquire Now</span>
+          <ArrowRight size={14} />
         </button>
       </div>
     </div>
-  );
+  )
 }

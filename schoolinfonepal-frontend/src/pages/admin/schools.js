@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react"
 import AdminLayout from "@/components/admin/AdminLayout"
 import SchoolForm from "@/components/admin/school/SchoolForm"
+import Pagination from "@/components/common/Pagination"
 import { fetchSchools, deleteSchool } from "@/utils/api"
 import { useRouter } from "next/router"
+
+const PAGE_SIZE = 12
 
 export default function AdminSchoolsPage() {
   const [schools, setSchools] = useState([])
@@ -11,19 +14,21 @@ export default function AdminSchoolsPage() {
   const [showForm, setShowForm] = useState(false)
   const [refresh, setRefresh] = useState(false)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const router = useRouter()
 
   useEffect(() => {
     const loadSchools = async () => {
       try {
-        const data = await fetchSchools()
-        // 💡 Always normalize to array
+        const data = await fetchSchools({ page: currentPage, page_size: PAGE_SIZE })
         let arr = []
         if (Array.isArray(data)) {
           arr = data
         } else if (Array.isArray(data?.results)) {
           arr = data.results
+          setTotal(data.count || 0)
         }
         setSchools(arr)
         setError(null)
@@ -34,7 +39,7 @@ export default function AdminSchoolsPage() {
       }
     }
     loadSchools()
-  }, [refresh])
+  }, [refresh, currentPage])
 
   const handleEdit = (slug) => {
     setSelectedSlug(slug)
@@ -63,6 +68,10 @@ export default function AdminSchoolsPage() {
     }
   }
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -79,85 +88,93 @@ export default function AdminSchoolsPage() {
         {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-8 border border-red-200">{error}</div>}
 
         {!showForm && (
-          <div className="bg-white shadow-lg rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">School Name</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">District</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Level</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Type</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {Array.isArray(schools) && schools.length > 0 ? (
-                    schools.map((school) => (
-                      <tr key={school.slug} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                          <div className="flex items-center space-x-3">
-                            {school.logo && (
-                              <img
-                                src={school.logo || "/placeholder.svg"}
-                                alt={school.name}
-                                className="h-8 w-8 rounded-full object-cover"
-                              />
-                            )}
-                            <div>
-                              <div className="font-semibold">{school.name}</div>
-                              <div className="text-gray-500 text-xs">{school.address}</div>
-                              <div className="flex items-center space-x-2 mt-1">
-                                {school.verification && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Verified
-                                  </span>
-                                )}
-                                {school.featured && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Featured
-                                  </span>
-                                )}
+          <>
+            <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">School Name</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">District</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Level</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Type</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Status</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {Array.isArray(schools) && schools.length > 0 ? (
+                      schools.map((school) => (
+                        <tr key={school.slug} className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                            <div className="flex items-center space-x-3">
+                              {school.logo && (
+                                <img
+                                  src={school.logo || "/placeholder.svg"}
+                                  alt={school.name}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              )}
+                              <div>
+                                <div className="font-semibold">{school.name}</div>
+                                <div className="text-gray-500 text-xs">{school.address}</div>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  {school.verification && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      Verified
+                                    </span>
+                                  )}
+                                  {school.featured && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      Featured
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.district_name || "-"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {school.level_name || school.level_text || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.type_name || "-"}</td>
-                        <td className="px-6 py-4 text-sm text-center">
-                          <span className="text-green-600 font-medium">Active</span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-center space-x-4">
-                          <button
-                            className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
-                            onClick={() => handleEdit(school.slug)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
-                            onClick={() => handleDelete(school.slug)}
-                          >
-                            Delete
-                          </button>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.district_name || "-"}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                            {school.level_name || school.level_text || "-"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.type_name || "-"}</td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className="text-green-600 font-medium">Active</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center space-x-4">
+                            <button
+                              className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
+                              onClick={() => handleEdit(school.slug)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
+                              onClick={() => handleDelete(school.slug)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="text-center py-8 text-gray-500 text-sm">
+                          No schools found.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="text-center py-8 text-gray-500 text-sm">
-                        No schools found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+            <Pagination
+              current={currentPage}
+              total={total}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          </>
         )}
 
         {showForm && (
