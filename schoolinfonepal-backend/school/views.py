@@ -32,6 +32,7 @@ from inquiry.serializers import InquirySerializer, PreRegistrationInquirySeriali
 from django.utils import timezone
 import csv
 from core.pagination import StandardResultsSetPagination
+
 def safe_json_loads(val):
     """Utility: safely decode JSON or pass through lists/dicts."""
     if val in [None, "", [], {}]:
@@ -84,7 +85,6 @@ class IsSchoolOwnerOrAdmin(IsAuthenticated):
             
         return False
 
-# views.py
 class SchoolListView(ListAPIView):
     serializer_class = SchoolSerializer
     permission_classes = [AllowAny]
@@ -106,10 +106,8 @@ class SchoolListView(ListAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['request'] = self.request  # Ensure this is present!
+        context['request'] = self.request
         return context
-
-
 
 class SchoolDetailView(RetrieveAPIView):
     queryset = School.objects.all()
@@ -384,80 +382,128 @@ def _handle_m2m_relationships(school, request):
 
 def _handle_file_uploads(school, request, is_update=False):
     """Handle all file uploads for school"""
+    print(f"=== FILE UPLOADS DEBUG ===")
+    print(f"Request data keys: {list(request.data.keys())}")
+    print(f"Request files keys: {list(request.FILES.keys())}")
 
     # Handle main images
     if "logo" in request.FILES:
+        print("Processing logo upload")
         if is_update and school.logo:
             safe_file_delete(school.logo)
         school.logo = request.FILES["logo"]
 
     if "cover_photo" in request.FILES:
+        print("Processing cover photo upload")
         if is_update and school.cover_photo:
             safe_file_delete(school.cover_photo)
         school.cover_photo = request.FILES["cover_photo"]
 
     if "og_image" in request.FILES:
+        print("Processing OG image upload")
         if is_update and school.og_image:
             safe_file_delete(school.og_image)
         school.og_image = request.FILES["og_image"]
 
     school.save()
 
-    # Handle gallery images
-    if "gallery" in request.data:
+    # ✅ CRITICAL FIX: Only handle gallery if explicitly flagged for update
+    if request.data.get("update_gallery") == "true":
+        print("Explicitly updating gallery")
         if is_update:
+            print("Deleting existing gallery items")
             for gallery_item in school.gallery.all():
                 safe_file_delete(gallery_item.image)
                 gallery_item.delete()
 
         gallery_data = safe_json_loads(request.data.get("gallery", []))
+        print(f"Gallery data: {gallery_data}")
         for i, item in enumerate(gallery_data):
             img_key = f"gallery_{i}_image"
             if img_key in request.FILES:
+                print(f"Creating gallery item {i} with new file")
                 SchoolGallery.objects.create(
                     school=school,
                     image=request.FILES[img_key],
                     caption=item.get("caption", "")
                 )
+            elif item.get("image") and not item.get("image").startswith("http"):
+                print(f"Preserving existing gallery item {i}")
+                # This is an existing image path, recreate the record
+                SchoolGallery.objects.create(
+                    school=school,
+                    image=item.get("image"),
+                    caption=item.get("caption", "")
+                )
+    else:
+        print("Gallery update not requested")
 
-    # Handle brochure files
-    if "brochures" in request.data:
+    # ✅ CRITICAL FIX: Only handle brochures if explicitly flagged for update
+    if request.data.get("update_brochures") == "true":
+        print("Explicitly updating brochures")
         if is_update:
+            print("Deleting existing brochure items")
             for brochure_item in school.brochures.all():
                 safe_file_delete(brochure_item.file)
                 brochure_item.delete()
 
         brochures_data = safe_json_loads(request.data.get("brochures", []))
+        print(f"Brochures data: {brochures_data}")
         for i, item in enumerate(brochures_data):
             file_key = f"brochures_{i}_file"
             if file_key in request.FILES:
+                print(f"Creating brochure item {i} with new file")
                 SchoolBrochure.objects.create(
                     school=school,
                     file=request.FILES[file_key],
                     description=item.get("description", "")
                 )
+            elif item.get("file") and not item.get("file").startswith("http"):
+                print(f"Preserving existing brochure item {i}")
+                # This is an existing file path, recreate the record
+                SchoolBrochure.objects.create(
+                    school=school,
+                    file=item.get("file"),
+                    description=item.get("description", "")
+                )
+    else:
+        print("Brochures update not requested")
 
-    # Handle message images
-    if "messages" in request.data:
+    # ✅ CRITICAL FIX: Only handle messages if explicitly flagged for update
+    if request.data.get("update_messages") == "true":
+        print("Explicitly updating messages")
         if is_update:
+            print("Deleting existing message items")
             for message_item in school.messages.all():
                 safe_file_delete(message_item.image)
                 message_item.delete()
 
         messages_data = safe_json_loads(request.data.get("messages", []))
+        print(f"Messages data: {messages_data}")
         for i, msg in enumerate(messages_data):
             img_key = f"messages_{i}_image"
             msg_image = request.FILES.get(img_key)
 
-            if any([msg.get("title"), msg.get("message"), msg.get("name"), msg.get("designation")]) or msg_image:
+            # Create message if it has content or an image
+            if any([msg.get("title"), msg.get("message"), msg.get("name"), msg.get("designation")]) or msg_image or msg.get("image"):
+                print(f"Creating message item {i}")
+                # Handle existing image
+                existing_image = None
+                if msg.get("image") and not msg.get("image").startswith("http"):
+                    existing_image = msg.get("image")
+                
                 SchoolMessage.objects.create(
                     school=school,
                     title=msg.get("title", ""),
                     message=msg.get("message", ""),
                     name=msg.get("name", ""),
                     designation=msg.get("designation", ""),
-                    image=msg_image
+                    image=msg_image or existing_image
                 )
+    else:
+        print("Messages update not requested")
+    
+    print(f"=== END FILE UPLOADS DEBUG ===")
 
 @api_view(["DELETE"])
 @permission_classes([IsAdminUser])

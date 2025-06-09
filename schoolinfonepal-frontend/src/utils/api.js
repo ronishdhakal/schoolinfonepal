@@ -386,8 +386,11 @@ export const deleteSchool = async (slug) => {
   if (!res.ok) {
     throw new Error("Delete failed")
   }
-  return res.json()
+  // Robust: only try .json() if response has content
+  const text = await res.text()
+  return text ? JSON.parse(text) : {}
 }
+
 
 // ========================
 // 🏫 School Dashboard APIs
@@ -715,7 +718,13 @@ export const updateAdvertisement = async (id, formData) => {
   return res.json()
 }
 
+
 export const deleteAdvertisement = async (id) => {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token")
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
   const headers = getAuthHeaders()
   const res = await fetch(`${API_BASE_URL}/ads/${id}/delete/`, {
     method: "DELETE",
@@ -725,8 +734,13 @@ export const deleteAdvertisement = async (id) => {
   if (!res.ok) {
     throw new Error("Delete failed")
   }
-  return res.json()
+
+  // ✅ FIXED: Handle empty response from DELETE
+  const text = await res.text()
+  return text ? JSON.parse(text) : { message: "Deleted successfully" }
 }
+
+
 export const fetchAdsByPlacements = async (placements = []) => {
   // Usage: fetchAdsByPlacements(['home-1', 'home-2'])
   const url = new URL(`${API_BASE_URL}/ads/`)
@@ -734,6 +748,11 @@ export const fetchAdsByPlacements = async (placements = []) => {
   const res = await fetch(url)
   return res.json()
 }
+
+
+
+
+
 
 // ========================
 // 📚 Discipline APIs

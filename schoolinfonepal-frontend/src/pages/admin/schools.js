@@ -18,14 +18,21 @@ export default function AdminSchoolsPage() {
     const loadSchools = async () => {
       try {
         const data = await fetchSchools()
-        setSchools(data)
+        // 💡 Always normalize to array
+        let arr = []
+        if (Array.isArray(data)) {
+          arr = data
+        } else if (Array.isArray(data?.results)) {
+          arr = data.results
+        }
+        setSchools(arr)
         setError(null)
       } catch (err) {
         console.error("Unauthorized or fetch failed:", err)
         setError("You are not authorized. Please login again.")
+        setSchools([])
       }
     }
-
     loadSchools()
   }, [refresh])
 
@@ -86,60 +93,61 @@ export default function AdminSchoolsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {schools.map((school) => (
-                    <tr key={school.slug} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        <div className="flex items-center space-x-3">
-                          {school.logo && (
-                            <img
-                              src={school.logo || "/placeholder.svg"}
-                              alt={school.name}
-                              className="h-8 w-8 rounded-full object-cover"
-                            />
-                          )}
-                          <div>
-                            <div className="font-semibold">{school.name}</div>
-                            <div className="text-gray-500 text-xs">{school.address}</div>
-                            <div className="flex items-center space-x-2 mt-1">
-                              {school.verification && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Verified
-                                </span>
-                              )}
-                              {school.featured && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  Featured
-                                </span>
-                              )}
+                  {Array.isArray(schools) && schools.length > 0 ? (
+                    schools.map((school) => (
+                      <tr key={school.slug} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                          <div className="flex items-center space-x-3">
+                            {school.logo && (
+                              <img
+                                src={school.logo || "/placeholder.svg"}
+                                alt={school.name}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            )}
+                            <div>
+                              <div className="font-semibold">{school.name}</div>
+                              <div className="text-gray-500 text-xs">{school.address}</div>
+                              <div className="flex items-center space-x-2 mt-1">
+                                {school.verification && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Verified
+                                  </span>
+                                )}
+                                {school.featured && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Featured
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.district_name || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                        {school.level_name || school.level_text || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.type_name || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-center">
-                        <span className="text-green-600 font-medium">Active</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center space-x-4">
-                        <button
-                          className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
-                          onClick={() => handleEdit(school.slug)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
-                          onClick={() => handleDelete(school.slug)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {schools.length === 0 && !error && (
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.district_name || "-"}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                          {school.level_name || school.level_text || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">{school.type_name || "-"}</td>
+                        <td className="px-6 py-4 text-sm text-center">
+                          <span className="text-green-600 font-medium">Active</span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center space-x-4">
+                          <button
+                            className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
+                            onClick={() => handleEdit(school.slug)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
+                            onClick={() => handleDelete(school.slug)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
                     <tr>
                       <td colSpan="6" className="text-center py-8 text-gray-500 text-sm">
                         No schools found.

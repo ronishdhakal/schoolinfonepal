@@ -20,8 +20,7 @@ class UniversityMinimalSerializer(serializers.ModelSerializer):
 class LevelMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Level
-        fields = ['id', 'title']  # <-- use 'title', not 'name'
-
+        fields = ['id', 'title']
 
 class SchoolMinimalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,6 +29,7 @@ class SchoolMinimalSerializer(serializers.ModelSerializer):
 
 class ScholarshipSerializer(serializers.ModelSerializer):
     slug = serializers.CharField(required=False, allow_blank=True)
+    
     # For reading, show nested; for writing, accept PK
     organizer_school = SchoolMinimalSerializer(read_only=True)
     organizer_school_id = serializers.PrimaryKeyRelatedField(
@@ -39,14 +39,17 @@ class ScholarshipSerializer(serializers.ModelSerializer):
     organizer_university_id = serializers.PrimaryKeyRelatedField(
         queryset=University.objects.all(), source='organizer_university', write_only=True, required=False, allow_null=True
     )
+    
     courses = CourseMinimalSerializer(many=True, read_only=True)
     course_ids = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.all(), many=True, source='courses', write_only=True, required=False
     )
+    
     level = LevelMinimalSerializer(read_only=True)
     level_id = serializers.PrimaryKeyRelatedField(
         queryset=Level.objects.all(), source='level', write_only=True, required=False, allow_null=True
     )
+    
     university = UniversityMinimalSerializer(read_only=True)
     university_id = serializers.PrimaryKeyRelatedField(
         queryset=University.objects.all(), source='university', write_only=True, required=False, allow_null=True
@@ -69,29 +72,44 @@ class ScholarshipSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def validate(self, attrs):
-        # Ensure at least one organizer is provided
-        if not (
-            attrs.get('organizer_school') or
-            attrs.get('organizer_university') or
-            attrs.get('organizer_custom')
-        ):
-            raise serializers.ValidationError(
-                "Please specify at least one organizer: school, university, or custom text."
-            )
+        print("=== SERIALIZER VALIDATION DEBUG ===")
+        print(f"Received attrs: {attrs}")
+        
+        # ✅ FIXED: Check for organizer presence more carefully
+        organizer_school = attrs.get('organizer_school')
+        organizer_university = attrs.get('organizer_university') 
+        organizer_custom = attrs.get('organizer_custom', '').strip()
+        
+        print(f"organizer_school: {organizer_school}")
+        print(f"organizer_university: {organizer_university}")
+        print(f"organizer_custom: '{organizer_custom}'")
+        
+        has_organizer = bool(organizer_school or organizer_university or organizer_custom)
+        print(f"has_organizer: {has_organizer}")
+        
+        if not has_organizer:
+            raise serializers.ValidationError({
+                'non_field_errors': ["Please specify at least one organizer: school, university, or custom text."]
+            })
 
         # Validate date range
         active_from = attrs.get('active_from')
         active_until = attrs.get('active_until')
 
         if active_from and active_until and active_from >= active_until:
-            raise serializers.ValidationError(
-                "Active until date must be after active from date."
-            )
+            raise serializers.ValidationError({
+                'active_until': ["Active until date must be after active from date."]
+            })
 
         return attrs
 
     def create(self, validated_data):
         courses = validated_data.pop('courses', [])
+        
+        print("=== SERIALIZER CREATE DEBUG ===")
+        print(f"Creating with validated_data: {validated_data}")
+        print(f"Courses: {courses}")
+        
         # Generate unique slug
         requested_slug = validated_data.get("slug")
         base_slug = slugify(requested_slug or validated_data.get("title", "scholarship"))
@@ -104,17 +122,28 @@ class ScholarshipSerializer(serializers.ModelSerializer):
 
         instance = Scholarship.objects.create(**validated_data)
         instance.courses.set(courses)
+        
+        print(f"Created scholarship: {instance.id}")
         return instance
 
     def update(self, instance, validated_data):
         courses = validated_data.pop('courses', None)
+        
+        print("=== SERIALIZER UPDATE DEBUG ===")
+        print(f"Updating with validated_data: {validated_data}")
+        print(f"Courses: {courses}")
+        
         # Remove slug from validated_data to prevent updates
         validated_data.pop("slug", None)
+        
         # Update all other fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        
         # Update courses if provided
         if courses is not None:
             instance.courses.set(courses)
+            
+        print(f"Updated scholarship: {instance.id}")
         return instance

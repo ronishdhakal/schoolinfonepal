@@ -47,10 +47,8 @@ class UniversitySerializer(serializers.ModelSerializer):
 
 class CourseSerializer(serializers.ModelSerializer):
     university_name = serializers.CharField(source="university.name", read_only=True)
-    name = serializers.CharField()  # <-- ADD THIS if missing!
-    duration = serializers.CharField()  # <--- ADD THIS LINE
-
-
+    name = serializers.CharField()
+    duration = serializers.CharField()
 
     class Meta:
         model = Course
@@ -112,7 +110,6 @@ class SchoolMessageSerializer(serializers.ModelSerializer):
 class SchoolCourseSerializer(serializers.ModelSerializer):
     course = CourseSerializer(read_only=True)
     course_id = serializers.IntegerField(write_only=True)
-    
 
     class Meta:
         model = SchoolCourse
@@ -256,7 +253,7 @@ class SchoolSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        # Update related objects
+        # ✅ FIXED: Only update related objects if data is provided
         if phones_data is not None:
             instance.phones.all().delete()
             for phone_data in phones_data:
@@ -277,7 +274,7 @@ class SchoolSerializer(serializers.ModelSerializer):
             for faq_data in faqs_data:
                 SchoolFAQ.objects.create(school=instance, **faq_data)
 
-        # ✅ FIXED: Update school courses
+        # ✅ FIXED: Only update school courses if data is provided
         if school_courses_data is not None:
             self._process_school_courses(instance, school_courses_data)
 

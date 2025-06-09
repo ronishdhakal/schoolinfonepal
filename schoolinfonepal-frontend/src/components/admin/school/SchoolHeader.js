@@ -88,6 +88,18 @@ const SchoolHeader = ({ formData, setFormData }) => {
         </div>
 
         <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Admin Email *</label>
+          <input
+            type="email"
+            value={formData.admin_email || ""}
+            onChange={(e) => handleChange("admin_email", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Enter admin email"
+            required
+          />
+        </div>
+
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
           <input
             type="text"
@@ -101,8 +113,8 @@ const SchoolHeader = ({ formData, setFormData }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">District</label>
           <select
-            value={formData.district || ""}
-            onChange={(e) => handleChange("district", e.target.value)}
+            value={formData.district_id || formData.district?.id || ""}
+            onChange={(e) => handleChange("district_id", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="">Select District</option>
@@ -117,14 +129,14 @@ const SchoolHeader = ({ formData, setFormData }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
           <select
-            value={formData.level || ""}
-            onChange={(e) => handleChange("level", e.target.value)}
+            value={formData.level_id || formData.level?.id || ""}
+            onChange={(e) => handleChange("level_id", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="">Select Level</option>
             {levels.map((level) => (
               <option key={level.id} value={level.id}>
-                {level.name}
+                {level.title}
               </option>
             ))}
           </select>
@@ -144,8 +156,8 @@ const SchoolHeader = ({ formData, setFormData }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
           <select
-            value={formData.type || ""}
-            onChange={(e) => handleChange("type", e.target.value)}
+            value={formData.type_id || formData.type?.id || ""}
+            onChange={(e) => handleChange("type_id", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="">Select Type</option>

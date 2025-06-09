@@ -13,6 +13,10 @@ export default function AdmissionAbout({ formData, setFormData, errors = {} }) {
       try {
         const [levelsData, universitiesData] = await Promise.all([fetchLevelsDropdown(), fetchUniversitiesDropdown()])
 
+        console.log("=== DROPDOWN DATA ===")
+        console.log("Loaded levels:", levelsData)
+        console.log("Loaded universities:", universitiesData)
+
         setLevels(Array.isArray(levelsData) ? levelsData : [])
         setUniversities(Array.isArray(universitiesData) ? universitiesData : [])
       } catch (error) {
@@ -26,10 +30,17 @@ export default function AdmissionAbout({ formData, setFormData, errors = {} }) {
   }, [])
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
+    console.log(`=== FIELD UPDATE ===`)
+    console.log(`Updating ${field} from "${formData[field]}" to "${value}"`)
+
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [field]: value,
+      }
+      console.log("Updated form data:", updated)
+      return updated
+    })
   }
 
   if (loading) {
@@ -57,7 +68,7 @@ export default function AdmissionAbout({ formData, setFormData, errors = {} }) {
           <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
           <select
             value={formData.level || ""}
-            onChange={(e) => handleInputChange("level", e.target.value || null)}
+            onChange={(e) => handleInputChange("level", e.target.value || "")}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               errors.level ? "border-red-500" : "border-gray-300"
             }`}
@@ -65,11 +76,14 @@ export default function AdmissionAbout({ formData, setFormData, errors = {} }) {
             <option value="">Select a level</option>
             {levels.map((level) => (
               <option key={level.id} value={level.id}>
-                {level.name}
+                {/* ✅ FIXED: Use level.title instead of level.name */}
+                {level.title || level.name}
               </option>
             ))}
           </select>
           {errors.level && <p className="mt-1 text-sm text-red-600">{errors.level}</p>}
+          {/* ✅ DEBUG: Show current value */}
+          <p className="mt-1 text-xs text-gray-500">Current value: "{formData.level}"</p>
         </div>
 
         {/* University */}
@@ -77,7 +91,7 @@ export default function AdmissionAbout({ formData, setFormData, errors = {} }) {
           <label className="block text-sm font-medium text-gray-700 mb-2">University</label>
           <select
             value={formData.university || ""}
-            onChange={(e) => handleInputChange("university", e.target.value || null)}
+            onChange={(e) => handleInputChange("university", e.target.value || "")}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               errors.university ? "border-red-500" : "border-gray-300"
             }`}
@@ -90,6 +104,8 @@ export default function AdmissionAbout({ formData, setFormData, errors = {} }) {
             ))}
           </select>
           {errors.university && <p className="mt-1 text-sm text-red-600">{errors.university}</p>}
+          {/* ✅ DEBUG: Show current value */}
+          <p className="mt-1 text-xs text-gray-500">Current value: "{formData.university}"</p>
         </div>
 
         {/* Featured */}

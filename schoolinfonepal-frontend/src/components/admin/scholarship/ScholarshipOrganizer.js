@@ -4,14 +4,22 @@ import SearchableSelect from "@/components/common/SearchableSelect"
 
 export default function ScholarshipOrganizer({ formData, onChange, schools, universities, errors }) {
   const handleOrganizerChange = (field, value) => {
-    // Clear other organizer fields when one is selected
-    const updates = {
-      organizer_school: field === "organizer_school" ? value : "",
-      organizer_university: field === "organizer_university" ? value : "",
-      organizer_custom: field === "organizer_custom" ? value : "",
+    console.log(`=== ORGANIZER CHANGE ===`)
+    console.log(`Field: ${field}, Value: ${value}`)
+    console.log(`Current formData:`, formData)
+
+    // Create a single change event that clears other organizers and sets the new one
+    const newFormData = {
+      organizer_school: "",
+      organizer_university: "",
+      organizer_custom: "",
+      [field]: value || "",
     }
 
-    Object.entries(updates).forEach(([key, val]) => {
+    console.log("New organizer data:", newFormData)
+
+    // Apply all organizer updates at once
+    Object.entries(newFormData).forEach(([key, val]) => {
       onChange({
         target: {
           name: key,
@@ -89,6 +97,14 @@ export default function ScholarshipOrganizer({ formData, onChange, schools, univ
             </p>
           </div>
         )}
+      </div>
+      <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Debug - Current Values:</h4>
+        <div className="text-xs text-gray-600 space-y-1">
+          <div>organizer_school: "{formData.organizer_school}"</div>
+          <div>organizer_university: "{formData.organizer_university}"</div>
+          <div>organizer_custom: "{formData.organizer_custom}"</div>
+        </div>
       </div>
     </div>
   )

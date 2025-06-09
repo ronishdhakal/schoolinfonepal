@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   createScholarship,
   updateScholarship,
@@ -8,12 +8,12 @@ import {
   fetchUniversitiesDropdown,
   fetchCoursesDropdown,
   fetchLevelsDropdown,
-} from "@/utils/api"
-import ScholarshipBasicInfo from "./ScholarshipBasicInfo"
-import ScholarshipDates from "./ScholarshipDates"
-import ScholarshipOrganizer from "./ScholarshipOrganizer"
-import ScholarshipRelations from "./ScholarshipRelations"
-import ScholarshipAbout from "./ScholarshipAbout"
+} from "@/utils/api";
+import ScholarshipBasicInfo from "./ScholarshipBasicInfo";
+import ScholarshipDates from "./ScholarshipDates";
+import ScholarshipOrganizer from "./ScholarshipOrganizer";
+import ScholarshipRelations from "./ScholarshipRelations";
+import ScholarshipAbout from "./ScholarshipAbout";
 
 export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
@@ -31,20 +31,20 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
     description: "",
     attachment: null,
     featured: false,
-  })
+  });
 
   const [dropdowns, setDropdowns] = useState({
     schools: [],
     universities: [],
     courses: [],
     levels: [],
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [errors, setErrors] = useState({})
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    loadDropdowns()
+    loadDropdowns();
     if (scholarship) {
       setFormData({
         title: scholarship.title || "",
@@ -52,18 +52,46 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
         published_date: scholarship.published_date || "",
         active_from: scholarship.active_from || "",
         active_until: scholarship.active_until || "",
-        organizer_school: scholarship.organizer_school || "",
-        organizer_university: scholarship.organizer_university || "",
+        // Only store the id!
+        organizer_school:
+          (typeof scholarship.organizer_school === "object" &&
+            scholarship.organizer_school !== null &&
+            "id" in scholarship.organizer_school)
+            ? scholarship.organizer_school.id
+            : scholarship.organizer_school || "",
+        organizer_university:
+          (typeof scholarship.organizer_university === "object" &&
+            scholarship.organizer_university !== null &&
+            "id" in scholarship.organizer_university)
+            ? scholarship.organizer_university.id
+            : scholarship.organizer_university || "",
         organizer_custom: scholarship.organizer_custom || "",
-        courses: scholarship.courses || [],
-        level: scholarship.level || "",
-        university: scholarship.university || "",
+        // Map courses to their IDs only
+        courses: Array.isArray(scholarship.courses)
+          ? scholarship.courses.map((c) =>
+              typeof c === "object" && c !== null && "id" in c ? c.id : c
+            )
+          : [],
+        // Level/university: id only
+        level:
+          typeof scholarship.level === "object" &&
+          scholarship.level !== null &&
+          "id" in scholarship.level
+            ? scholarship.level.id
+            : scholarship.level || "",
+        university:
+          typeof scholarship.university === "object" &&
+          scholarship.university !== null &&
+          "id" in scholarship.university
+            ? scholarship.university.id
+            : scholarship.university || "",
         description: scholarship.description || "",
         attachment: scholarship.attachment || null,
         featured: scholarship.featured || false,
-      })
+      });
     }
-  }, [scholarship])
+    // eslint-disable-next-line
+  }, [scholarship]);
 
   const loadDropdowns = async () => {
     try {
@@ -72,93 +100,123 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
         fetchUniversitiesDropdown(),
         fetchCoursesDropdown(),
         fetchLevelsDropdown(),
-      ])
+      ]);
       setDropdowns({
         schools: schoolsData || [],
         universities: universitiesData || [],
         courses: coursesData || [],
         levels: levelsData || [],
-      })
+      });
     } catch (err) {
-      console.error("Error loading dropdowns:", err)
-      setError("Failed to load dropdown data. Please refresh the page.")
+      console.error("Error loading dropdowns:", err);
+      setError("Failed to load dropdown data. Please refresh the page.");
     }
-  }
+  };
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
-    }))
+    }));
 
     // Clear field-specific error when user starts typing
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: null }))
+      setErrors((prev) => ({ ...prev, [name]: null }));
     }
-  }
+  };
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {};
 
-    if (!formData.title.trim()) newErrors.title = "Title is required"
-    if (!formData.published_date) newErrors.published_date = "Published date is required"
-    if (!formData.active_from) newErrors.active_from = "Active from date is required"
-    if (!formData.active_until) newErrors.active_until = "Active until date is required"
+    if (!formData.title.trim()) newErrors.title = "Title is required";
+    if (!formData.published_date) newErrors.published_date = "Published date is required";
+    if (!formData.active_from) newErrors.active_from = "Active from date is required";
+    if (!formData.active_until) newErrors.active_until = "Active until date is required";
 
     // Date validation
     if (formData.active_from && formData.active_until) {
       if (new Date(formData.active_until) <= new Date(formData.active_from)) {
-        newErrors.active_until = "Active until date must be after active from date"
+        newErrors.active_until = "Active until date must be after active from date";
       }
     }
 
     // Organizer validation
     if (!formData.organizer_school && !formData.organizer_university && !formData.organizer_custom) {
-      newErrors.organizer = "Please specify at least one organizer"
+      newErrors.organizer = "Please specify at least one organizer";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
-      setError("Please fix the errors below")
-      return
+      setError("Please fix the errors below");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const submitData = new FormData()
+      const submitData = new FormData();
 
-      Object.keys(formData).forEach((key) => {
-        if (key === "attachment" && formData[key] instanceof File) {
-          submitData.append(key, formData[key])
-        } else if (Array.isArray(formData[key])) {
-          submitData.append(key, JSON.stringify(formData[key]))
-        } else if (formData[key] !== "" && formData[key] !== null && formData[key] !== undefined) {
-          submitData.append(key, formData[key])
-        }
-      })
+      // Always use *_id fields for DRF serializer!
+      submitData.append("organizer_school_id", formData.organizer_school || "");
+      submitData.append("organizer_university_id", formData.organizer_university || "");
+      submitData.append("organizer_custom", formData.organizer_custom || "");
 
-      if (scholarship) {
-        await updateScholarship(scholarship.slug, submitData)
-      } else {
-        await createScholarship(submitData)
+      // Add other required fields
+      submitData.append("title", formData.title || "");
+      submitData.append("slug", formData.slug || "");
+      submitData.append("published_date", formData.published_date || "");
+      submitData.append("active_from", formData.active_from || "");
+      submitData.append("active_until", formData.active_until || "");
+      submitData.append("featured", formData.featured || false);
+      submitData.append("description", formData.description || "");
+
+      // Handle optional fields
+      if (formData.level) {
+        submitData.append("level_id", formData.level);
+      }
+      if (formData.university) {
+        submitData.append("university_id", formData.university);
       }
 
-      onSuccess()
+      // --- MAIN FIX: handle course_ids as repeated fields ---
+      if (formData.courses && formData.courses.length > 0) {
+        formData.courses.forEach((id) => {
+          submitData.append("course_ids", id);
+        });
+      }
+
+      // Handle file attachment
+      if (formData.attachment instanceof File) {
+        submitData.append("attachment", formData.attachment);
+      }
+
+      console.log("=== SCHOLARSHIP FORM SUBMISSION DEBUG ===");
+      for (const [key, value] of submitData.entries()) {
+        console.log(`${key}:`, value);
+      }
+
+      if (scholarship) {
+        await updateScholarship(scholarship.slug, submitData);
+      } else {
+        await createScholarship(submitData);
+      }
+
+      onSuccess();
     } catch (err) {
-      setError(err.message)
+      console.error("Submission error:", err);
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -213,5 +271,5 @@ export default function ScholarshipForm({ scholarship, onSuccess, onCancel }) {
         </div>
       </form>
     </div>
-  )
+  );
 }

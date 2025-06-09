@@ -63,14 +63,15 @@ function processMessages(messages) {
 const SchoolForm = ({ slug = null, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
+    admin_email: "",
     address: "",
     established_date: "",
     verification: false,
     featured: false,
-    district: "",
-    level: "",
+    district_id: "",
+    level_id: "",
     level_text: "",
-    type: "",
+    type_id: "",
     website: "",
     priority: 999,
     map_link: "",
@@ -95,7 +96,16 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     cover_photo: null,
     og_image: null,
   })
+
+  // ✅ NEW: Track which sections have been modified
+  const [modifiedSections, setModifiedSections] = useState({
+    gallery: false,
+    brochures: false,
+    messages: false,
+  })
+
   const [loading, setLoading] = useState(!!slug)
+  const [originalData, setOriginalData] = useState({}) // Store original data for comparison
   const router = useRouter()
 
   useEffect(() => {
@@ -114,8 +124,12 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
           const facilityIds = (data.facilities || []).map((f) => f.id)
           const universityIds = (data.universities || []).map((u) => u.id)
 
-          setFormData({
+          const processedData = {
             ...data,
+            // ✅ FIXED: Map the relationship IDs correctly
+            district_id: data.district?.id || "",
+            level_id: data.level?.id || "",
+            type_id: data.type?.id || "",
             phones: data.phones || [],
             emails: data.emails || [],
             gallery: data.gallery || [],
@@ -126,7 +140,10 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
             school_courses: processedSchoolCourses,
             facilities: facilityIds,
             universities: universityIds,
-          })
+          }
+
+          setFormData(processedData)
+          setOriginalData(processedData) // Store original data
           setLoading(false)
         })
         .catch((err) => {
@@ -136,6 +153,26 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     }
   }, [slug])
 
+  // ✅ NEW: Enhanced setFormData to track modifications
+  const updateFormData = (updater) => {
+    setFormData((prev) => {
+      const newData = typeof updater === "function" ? updater(prev) : updater
+
+      // Check if gallery, brochures, or messages have been modified
+      if (originalData.gallery && JSON.stringify(newData.gallery) !== JSON.stringify(originalData.gallery)) {
+        setModifiedSections((ms) => ({ ...ms, gallery: true }))
+      }
+      if (originalData.brochures && JSON.stringify(newData.brochures) !== JSON.stringify(originalData.brochures)) {
+        setModifiedSections((ms) => ({ ...ms, brochures: true }))
+      }
+      if (originalData.messages && JSON.stringify(newData.messages) !== JSON.stringify(originalData.messages)) {
+        setModifiedSections((ms) => ({ ...ms, messages: true }))
+      }
+
+      return newData
+    })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const data = new FormData()
@@ -143,14 +180,15 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
     // Basic fields
     const basicFields = [
       "name",
+      "admin_email",
       "address",
       "established_date",
       "verification",
       "featured",
-      "district",
-      "level",
+      "district_id",
+      "level_id",
       "level_text",
-      "type",
+      "type_id",
       "website",
       "priority",
       "map_link",
@@ -180,26 +218,38 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
       data.append("og_image", formData.og_image)
     }
 
-    // Gallery
-    const { metadata: galleryMeta, files: galleryFiles } = processGallery(formData.gallery)
-    data.append("gallery", JSON.stringify(galleryMeta))
-    Object.entries(galleryFiles).forEach(([key, file]) => {
-      data.append(key, file)
-    })
+    // ✅ FIXED: Only send gallery data if it has been modified or it's a new school
+    if (!slug || modifiedSections.gallery) {
+      data.append("update_gallery", "true")
+      const { metadata: galleryMeta, files: galleryFiles } = processGallery(formData.gallery)
+      data.append("gallery", JSON.stringify(galleryMeta))
+      Object.entries(galleryFiles).forEach(([key, file]) => {
+        data.append(key, file)
+      })
+      console.log("Sending gallery data:", galleryMeta)
+    }
 
-    // Brochures
-    const { metadata: brochuresMeta, files: brochuresFiles } = processBrochures(formData.brochures)
-    data.append("brochures", JSON.stringify(brochuresMeta))
-    Object.entries(brochuresFiles).forEach(([key, file]) => {
-      data.append(key, file)
-    })
+    // ✅ FIXED: Only send brochures data if it has been modified or it's a new school
+    if (!slug || modifiedSections.brochures) {
+      data.append("update_brochures", "true")
+      const { metadata: brochuresMeta, files: brochuresFiles } = processBrochures(formData.brochures)
+      data.append("brochures", JSON.stringify(brochuresMeta))
+      Object.entries(brochuresFiles).forEach(([key, file]) => {
+        data.append(key, file)
+      })
+      console.log("Sending brochures data:", brochuresMeta)
+    }
 
-    // Messages
-    const { metadata: messagesMeta, files: messagesFiles } = processMessages(formData.messages)
-    data.append("messages", JSON.stringify(messagesMeta))
-    Object.entries(messagesFiles).forEach(([key, file]) => {
-      data.append(key, file)
-    })
+    // ✅ FIXED: Only send messages data if it has been modified or it's a new school
+    if (!slug || modifiedSections.messages) {
+      data.append("update_messages", "true")
+      const { metadata: messagesMeta, files: messagesFiles } = processMessages(formData.messages)
+      data.append("messages", JSON.stringify(messagesMeta))
+      Object.entries(messagesFiles).forEach(([key, file]) => {
+        data.append(key, file)
+      })
+      console.log("Sending messages data:", messagesMeta)
+    }
 
     // Simple JSON fields
     data.append("phones", JSON.stringify(formData.phones || []))
@@ -243,16 +293,10 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
 
     // Debug logging
     console.log("=== FRONTEND DEBUG ===")
+    console.log("Modified sections:", modifiedSections)
     console.log("Submitting school courses:", processedCourses)
     console.log("Submitting facilities:", facilityIds)
     console.log("Submitting universities:", universityIds)
-
-    // Debug FormData contents
-    console.log("=== FORMDATA CONTENTS ===")
-    for (const [key, value] of data.entries()) {
-      console.log(`${key}: ${value}`)
-    }
-    console.log("=== END FORMDATA ===")
 
     try {
       if (slug) {
@@ -276,18 +320,18 @@ const SchoolForm = ({ slug = null, onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-6xl mx-auto px-4 py-8 space-y-10">
-      <SchoolHeader formData={formData} setFormData={setFormData} />
-      <SchoolContact formData={formData} setFormData={setFormData} />
-      <SchoolAbout formData={formData} setFormData={setFormData} />
-      <SchoolGallery formData={formData} setFormData={setFormData} />
-      <SchoolBrochure formData={formData} setFormData={setFormData} />
-      <SchoolSocialMedia formData={formData} setFormData={setFormData} />
-      <SchoolFAQ formData={formData} setFormData={setFormData} />
-      <SchoolMessage formData={formData} setFormData={setFormData} />
-      <SchoolCourses formData={formData} setFormData={setFormData} />
-      <SchoolFacilities formData={formData} setFormData={setFormData} />
-      <SchoolUniversity formData={formData} setFormData={setFormData} />
-      <SchoolMeta formData={formData} setFormData={setFormData} />
+      <SchoolHeader formData={formData} setFormData={updateFormData} />
+      <SchoolContact formData={formData} setFormData={updateFormData} />
+      <SchoolAbout formData={formData} setFormData={updateFormData} />
+      <SchoolGallery formData={formData} setFormData={updateFormData} />
+      <SchoolBrochure formData={formData} setFormData={updateFormData} />
+      <SchoolSocialMedia formData={formData} setFormData={updateFormData} />
+      <SchoolFAQ formData={formData} setFormData={updateFormData} />
+      <SchoolMessage formData={formData} setFormData={updateFormData} />
+      <SchoolCourses formData={formData} setFormData={updateFormData} />
+      <SchoolFacilities formData={formData} setFormData={updateFormData} />
+      <SchoolUniversity formData={formData} setFormData={updateFormData} />
+      <SchoolMeta formData={formData} setFormData={updateFormData} />
 
       <div className="flex justify-end space-x-4 pt-6 border-t">
         <button

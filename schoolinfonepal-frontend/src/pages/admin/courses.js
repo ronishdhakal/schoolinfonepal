@@ -18,14 +18,21 @@ export default function AdminCoursesPage() {
     const loadCourses = async () => {
       try {
         const data = await fetchCourses()
-        setCourses(data)
+        // 💡 Make sure courses is always an array!
+        let arr = []
+        if (Array.isArray(data)) {
+          arr = data
+        } else if (Array.isArray(data?.results)) {
+          arr = data.results
+        }
+        setCourses(arr)
         setError(null)
       } catch (err) {
         console.error("Unauthorized or fetch failed:", err)
         setError("You are not authorized. Please login again.")
+        setCourses([])
       }
     }
-
     loadCourses()
   }, [refresh])
 
@@ -69,7 +76,9 @@ export default function AdminCoursesPage() {
           </button>
         </div>
 
-        {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-8 border border-red-200">{error}</div>}
+        {error && (
+          <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-8 border border-red-200">{error}</div>
+        )}
 
         {!showForm && (
           <div className="bg-white shadow-lg rounded-xl overflow-hidden">
@@ -85,34 +94,43 @@ export default function AdminCoursesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {courses.map((course) => (
-                    <tr key={course.slug} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        <div>
-                          <div className="font-semibold">{course.name}</div>
-                          {course.abbreviation && <div className="text-gray-500 text-xs">({course.abbreviation})</div>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 text-center">{course.university?.name || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 text-center">{course.level?.name || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 text-center">{course.duration || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-center space-x-4">
-                        <button
-                          className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
-                          onClick={() => handleEdit(course.slug)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
-                          onClick={() => handleDelete(course.slug)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {courses.length === 0 && !error && (
+                  {Array.isArray(courses) && courses.length > 0 ? (
+                    courses.map((course) => (
+                      <tr key={course.slug} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                          <div>
+                            <div className="font-semibold">{course.name}</div>
+                            {course.abbreviation && (
+                              <div className="text-gray-500 text-xs">({course.abbreviation})</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                          {course.university?.name || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                          {course.level?.name || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                          {course.duration || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center space-x-4">
+                          <button
+                            className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
+                            onClick={() => handleEdit(course.slug)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
+                            onClick={() => handleDelete(course.slug)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
                     <tr>
                       <td colSpan="5" className="text-center py-8 text-gray-500 text-sm">
                         No courses found.

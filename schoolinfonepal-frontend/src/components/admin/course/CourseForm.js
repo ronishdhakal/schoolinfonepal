@@ -19,6 +19,7 @@ const CourseForm = ({ slug = null, onSuccess }) => {
     level: "",
     disciplines: [],
     short_description: "",
+    long_description: "",
     outcome: "",
     eligibility: "",
     curriculum: "",
@@ -36,11 +37,24 @@ const CourseForm = ({ slug = null, onSuccess }) => {
     if (slug) {
       fetchCourseBySlug(slug)
         .then((data) => {
-          setFormData({
+          console.log("=== LOADING COURSE DATA ===")
+          console.log("Raw course data:", data)
+
+          const processedData = {
             ...data,
+            // ✅ FIXED: Extract IDs from objects properly
+            university: data.university?.id || data.university || "",
+            level: data.level?.id || data.level || "",
             disciplines: data.disciplines || [],
             attachments: data.attachments || [],
-          })
+          }
+
+          console.log("Processed course data:", processedData)
+          console.log("University ID:", processedData.university)
+          console.log("Level ID:", processedData.level)
+          console.log("Disciplines:", processedData.disciplines)
+
+          setFormData(processedData)
           setLoading(false)
         })
         .catch((err) => {
@@ -52,6 +66,10 @@ const CourseForm = ({ slug = null, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    console.log("=== SUBMITTING COURSE FORM ===")
+    console.log("Form data before submission:", formData)
+
     const data = new FormData()
 
     // Basic fields
@@ -74,46 +92,61 @@ const CourseForm = ({ slug = null, onSuccess }) => {
     ]
 
     basicFields.forEach((field) => {
-      if (formData[field] !== undefined && formData[field] !== null) {
+      if (formData[field] !== undefined && formData[field] !== null && formData[field] !== "") {
         data.append(field, formData[field])
+        console.log(`Added ${field}:`, formData[field])
       }
     })
 
-    // Disciplines (many-to-many)
-    data.append("disciplines", JSON.stringify(formData.disciplines || []))
+    // ✅ FIXED: Disciplines (many-to-many)
+    const disciplineIds = Array.isArray(formData.disciplines) ? formData.disciplines : []
+    data.append("disciplines", JSON.stringify(disciplineIds))
+    console.log("Added disciplines:", disciplineIds)
 
     // OG Image
     if (formData.og_image instanceof File) {
       data.append("og_image", formData.og_image)
+      console.log("Added OG image file")
     }
 
-    // Replace the current attachments handling with this:
-    // Don't send attachments in JSON if we're not modifying them
-    // Only send attachment files that are actually new files
+    // ✅ FIXED: Handle attachments properly
     const newAttachmentFiles = (formData.attachment_files || []).filter((file) => file instanceof File)
     if (newAttachmentFiles.length > 0) {
       newAttachmentFiles.forEach((file) => {
         data.append("attachment_files", file)
       })
+      console.log("Added attachment files:", newAttachmentFiles.length)
     }
 
     // Only send attachments JSON if we're explicitly managing them
-    // For updates, we'll let the backend handle existing attachments unless we're removing them
     if (!slug || (formData.attachments && formData.attachments.length === 0)) {
       data.append("attachments", JSON.stringify(formData.attachments || []))
+      console.log("Added attachments metadata")
     }
 
     // Handle attachment removals
     if (formData.attachments_to_remove && formData.attachments_to_remove.length > 0) {
       data.append("remove_attachments", JSON.stringify(formData.attachments_to_remove))
+      console.log("Added attachments to remove")
+    }
+
+    // ✅ DEBUG: Log FormData contents
+    console.log("FormData contents:")
+    for (const [key, value] of data.entries()) {
+      console.log(`${key}:`, value)
     }
 
     try {
+      let result
       if (slug) {
-        await updateCourse(slug, data)
+        console.log("Updating course with slug:", slug)
+        result = await updateCourse(slug, data)
       } else {
-        await createCourse(data)
+        console.log("Creating new course")
+        result = await createCourse(data)
       }
+
+      console.log("Submission result:", result)
 
       if (onSuccess) {
         onSuccess()
@@ -122,7 +155,7 @@ const CourseForm = ({ slug = null, onSuccess }) => {
       }
     } catch (err) {
       console.error("Error submitting form:", err)
-      alert("Submission failed. Please check the console for details.")
+      alert(`Submission failed: ${err.message}. Please check the console for details.`)
     }
   }
 

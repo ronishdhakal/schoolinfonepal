@@ -1,34 +1,66 @@
-"use client";
-import { useState, useEffect } from "react";
-import { fetchDisciplinesDropdown } from "@/utils/api";
+"use client"
+import { useState, useEffect } from "react"
+import { fetchDisciplinesDropdown } from "@/utils/api"
 
 const CourseInfo = ({ formData, setFormData }) => {
-  const [disciplines, setDisciplines] = useState([]);
+  const [disciplines, setDisciplines] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadDisciplines = async () => {
       try {
-        const data = await fetchDisciplinesDropdown();
-        setDisciplines(data);
+        const data = await fetchDisciplinesDropdown()
+        console.log("=== DISCIPLINES DATA ===")
+        console.log("Loaded disciplines:", data)
+        setDisciplines(Array.isArray(data) ? data : [])
       } catch (err) {
-        console.error("Failed to load disciplines:", err);
+        console.error("Failed to load disciplines:", err)
+      } finally {
+        setLoading(false)
       }
-    };
-    loadDisciplines();
-  }, []);
+    }
+    loadDisciplines()
+  }, [])
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+    console.log(`=== FIELD UPDATE ===`)
+    console.log(`Updating ${field} from "${formData[field]}" to "${value}"`)
+
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value }
+      console.log("Updated form data:", updated)
+      return updated
+    })
+  }
 
   const handleDisciplineChange = (disciplineId) => {
-    const currentDisciplines = formData.disciplines || [];
+    const currentDisciplines = formData.disciplines || []
     const updatedDisciplines = currentDisciplines.includes(disciplineId)
       ? currentDisciplines.filter((id) => id !== disciplineId)
-      : [...currentDisciplines, disciplineId];
+      : [...currentDisciplines, disciplineId]
 
-    handleChange("disciplines", updatedDisciplines);
-  };
+    console.log(`=== DISCIPLINE UPDATE ===`)
+    console.log(`Toggling discipline ${disciplineId}`)
+    console.log(`From:`, currentDisciplines)
+    console.log(`To:`, updatedDisciplines)
+
+    handleChange("disciplines", updatedDisciplines)
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-6">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -37,9 +69,7 @@ const CourseInfo = ({ formData, setFormData }) => {
       <div className="space-y-6">
         {/* Short Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Short Description
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Short Description</label>
           <textarea
             value={formData.short_description || ""}
             onChange={(e) => handleChange("short_description", e.target.value)}
@@ -51,9 +81,7 @@ const CourseInfo = ({ formData, setFormData }) => {
 
         {/* Long Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Long Description
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Long Description</label>
           <textarea
             value={formData.long_description || ""}
             onChange={(e) => handleChange("long_description", e.target.value)}
@@ -65,34 +93,34 @@ const CourseInfo = ({ formData, setFormData }) => {
 
         {/* Disciplines */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Disciplines
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Disciplines</label>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-4">
-            {disciplines.map((discipline) => (
-              <label
-                key={discipline.id}
-                className="flex items-center space-x-2 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={(formData.disciplines || []).includes(discipline.id)}
-                  onChange={() => handleDisciplineChange(discipline.id)}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm text-gray-900">
-                  {discipline.name}
-                </span>
-              </label>
-            ))}
+            {disciplines.length === 0 ? (
+              <p className="text-gray-500 text-sm col-span-full">No disciplines available</p>
+            ) : (
+              disciplines.map((discipline) => (
+                <label key={discipline.id} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(formData.disciplines || []).includes(discipline.id)}
+                    onChange={() => handleDisciplineChange(discipline.id)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-900">
+                    {/* ✅ FIXED: Use discipline.title instead of discipline.name */}
+                    {discipline.title || discipline.name}
+                  </span>
+                </label>
+              ))
+            )}
           </div>
+          {/* ✅ DEBUG: Show selected disciplines */}
+          <p className="mt-1 text-xs text-gray-500">Selected disciplines: {JSON.stringify(formData.disciplines)}</p>
         </div>
 
         {/* Outcome */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Outcome
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Outcome</label>
           <textarea
             value={formData.outcome || ""}
             onChange={(e) => handleChange("outcome", e.target.value)}
@@ -104,9 +132,7 @@ const CourseInfo = ({ formData, setFormData }) => {
 
         {/* Eligibility */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Eligibility
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Eligibility</label>
           <textarea
             value={formData.eligibility || ""}
             onChange={(e) => handleChange("eligibility", e.target.value)}
@@ -117,7 +143,7 @@ const CourseInfo = ({ formData, setFormData }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CourseInfo;
+export default CourseInfo

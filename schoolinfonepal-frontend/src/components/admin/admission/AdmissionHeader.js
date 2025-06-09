@@ -13,6 +13,9 @@ export default function AdmissionHeader({ formData, setFormData, errors = {}, is
       try {
         const [schoolsData, coursesData] = await Promise.all([fetchSchoolsDropdown(), fetchCoursesDropdown()])
 
+        console.log("Loaded schools:", schoolsData)
+        console.log("Loaded courses:", coursesData)
+
         setSchools(Array.isArray(schoolsData) ? schoolsData : [])
         setCourses(Array.isArray(coursesData) ? coursesData : [])
       } catch (error) {
@@ -26,6 +29,7 @@ export default function AdmissionHeader({ formData, setFormData, errors = {}, is
   }, [])
 
   const handleInputChange = (field, value) => {
+    console.log(`Updating ${field} to:`, value)
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -38,6 +42,7 @@ export default function AdmissionHeader({ formData, setFormData, errors = {}, is
       ? currentCourses.filter((id) => id !== courseId)
       : [...currentCourses, courseId]
 
+    console.log("Updated courses:", updatedCourses)
     handleInputChange("course_ids", updatedCourses)
   }
 
@@ -189,6 +194,8 @@ export default function AdmissionHeader({ formData, setFormData, errors = {}, is
             )}
           </div>
           {errors.course_ids && <p className="mt-1 text-sm text-red-600">{errors.course_ids}</p>}
+          {/* ✅ DEBUG: Show selected courses */}
+          <p className="mt-1 text-xs text-gray-500">Selected courses: {JSON.stringify(formData.course_ids)}</p>
         </div>
       </div>
     </div>

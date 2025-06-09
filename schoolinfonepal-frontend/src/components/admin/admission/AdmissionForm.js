@@ -29,7 +29,10 @@ export default function AdmissionForm({ admission = null, onSuccess, onCancel })
   // Initialize form data when admission prop changes
   useEffect(() => {
     if (admission) {
-      setFormData({
+      console.log("=== INITIALIZING FORM ===")
+      console.log("Raw admission data:", admission)
+
+      const initialData = {
         title: admission.title || "",
         slug: admission.slug || "",
         published_date: admission.published_date || "",
@@ -37,11 +40,19 @@ export default function AdmissionForm({ admission = null, onSuccess, onCancel })
         active_until: admission.active_until || "",
         school_id: admission.school?.id || "",
         course_ids: admission.courses?.map((course) => course.id) || [],
-        level: admission.level || "",
-        university: admission.university || "",
+        // ✅ FIXED: Extract IDs from objects properly
+        level: admission.level?.id || "",
+        university: admission.university?.id || "",
         featured: admission.featured || false,
         description: admission.description || "",
-      })
+      }
+
+      console.log("Processed form data:", initialData)
+      console.log("Level ID:", initialData.level)
+      console.log("University ID:", initialData.university)
+      console.log("Course IDs:", initialData.course_ids)
+
+      setFormData(initialData)
     }
   }, [admission])
 
@@ -97,6 +108,9 @@ export default function AdmissionForm({ admission = null, onSuccess, onCancel })
     setSubmitError("")
 
     try {
+      console.log("=== SUBMITTING FORM ===")
+      console.log("Form data before submission:", formData)
+
       // Prepare form data for submission
       const submitData = new FormData()
 
@@ -105,17 +119,29 @@ export default function AdmissionForm({ admission = null, onSuccess, onCancel })
         if (key === "course_ids") {
           // Handle course IDs as JSON string
           submitData.append("courses", JSON.stringify(formData[key]))
+          console.log("Added courses:", JSON.stringify(formData[key]))
         } else if (formData[key] !== null && formData[key] !== "") {
           submitData.append(key, formData[key])
+          console.log(`Added ${key}:`, formData[key])
         }
       })
 
+      // ✅ FIXED: Debug logging
+      console.log("FormData contents:")
+      for (const [key, value] of submitData.entries()) {
+        console.log(`${key}:`, value)
+      }
+
       let result
       if (isEditing) {
+        console.log("Updating admission with slug:", admission.slug)
         result = await updateAdmission(admission.slug, submitData)
       } else {
+        console.log("Creating new admission")
         result = await createAdmission(submitData)
       }
+
+      console.log("Submission result:", result)
 
       if (onSuccess) {
         onSuccess(result)

@@ -7,6 +7,7 @@ from discipline.models import Discipline
 class Course(models.Model):
     name = models.CharField(max_length=200)
     abbreviation = models.CharField(max_length=50, blank=True)
+    # ✅ FIXED: University is required, but we'll handle this properly in serializer
     university = models.ForeignKey(University, on_delete=models.CASCADE, related_name='courses')
     slug = models.SlugField(max_length=220, unique=True, blank=True)
     duration = models.CharField(max_length=100, blank=True)
@@ -27,11 +28,15 @@ class Course(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(f"{self.name}-{self.university.name}")
+            # ✅ FIXED: Only generate slug if university exists
+            if self.university:
+                self.slug = slugify(f"{self.name}-{self.university.name}")
+            else:
+                self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} ({self.university.name})"
+        return f"{self.name} ({self.university.name if self.university else 'No University'})"
 
 class CourseAttachment(models.Model):
     course = models.ForeignKey(Course, related_name='attachments', on_delete=models.CASCADE)
