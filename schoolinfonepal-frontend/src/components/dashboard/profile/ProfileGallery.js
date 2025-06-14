@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { fetchSchoolOwnProfile, updateSchoolOwnProfile } from "../../../utils/api"
+import { fetchSchoolOwnProfile, updateSchoolOwnProfile } from "@/utils/api"
 
 export default function ProfileGallery() {
   const [loading, setLoading] = useState(true)
@@ -41,6 +41,30 @@ export default function ProfileGallery() {
     updateGalleryItem(index, "file", file)
   }
 
+  // Delete existing gallery item
+  const deleteExistingItem = async (index) => {
+    if (!confirm("Are you sure you want to delete this gallery item?")) return
+
+    try {
+      setSaving(true)
+      const formData = new FormData()
+
+      // Send all gallery items except the one being deleted
+      const remainingItems = currentGallery.filter((_, i) => i !== index)
+
+      formData.append("gallery", JSON.stringify(remainingItems))
+
+      await updateSchoolOwnProfile(formData)
+      alert("Gallery item deleted successfully!")
+      loadGalleryData()
+    } catch (error) {
+      console.error("Error deleting gallery item:", error)
+      alert("Error deleting gallery item: " + error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -51,16 +75,30 @@ export default function ProfileGallery() {
       // Filter items that have files
       const validItems = galleryItems.filter((item) => item.file)
 
-      formData.append("gallery", JSON.stringify(validItems.map((item) => ({ caption: item.caption }))))
+      // Combine existing gallery items with new ones
+      const existingItems = currentGallery.map((item) => ({
+        caption: item.caption,
+        image: item.image, // Keep existing image reference
+      }))
 
+      const newItems = validItems.map((item) => ({
+        caption: item.caption,
+      }))
+
+      const allItems = [...existingItems, ...newItems]
+
+      formData.append("gallery", JSON.stringify(allItems))
+
+      // Add new files with correct naming (starting from existing count)
       validItems.forEach((item, index) => {
-        formData.append(`gallery_${index}_image`, item.file)
+        const fileIndex = currentGallery.length + index
+        formData.append(`gallery_${fileIndex}_image`, item.file)
       })
 
       await updateSchoolOwnProfile(formData)
       alert("Gallery updated successfully!")
-      loadGalleryData() // Reload to show updated gallery
-      setGalleryItems([{ caption: "", file: null }]) // Reset form
+      loadGalleryData()
+      setGalleryItems([{ caption: "", file: null }])
     } catch (error) {
       console.error("Error updating gallery:", error)
       alert("Error updating gallery: " + error.message)
@@ -81,7 +119,7 @@ export default function ProfileGallery() {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Current Gallery</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {currentGallery.map((item, index) => (
-              <div key={index} className="border rounded-lg overflow-hidden">
+              <div key={index} className="border rounded-lg overflow-hidden relative">
                 <img
                   src={item.image || "/placeholder.svg"}
                   alt={item.caption || `Gallery image ${index + 1}`}
@@ -92,6 +130,16 @@ export default function ProfileGallery() {
                     <p className="text-sm text-gray-600">{item.caption}</p>
                   </div>
                 )}
+
+                {/* Delete button */}
+                <button
+                  onClick={() => deleteExistingItem(index)}
+                  className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700 text-xs"
+                  disabled={saving}
+                  title="Delete this image"
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>
@@ -116,12 +164,13 @@ export default function ProfileGallery() {
             <div key={index} className="border rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image *</label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileChange(index, e.target.files[0])}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
                 <div>
@@ -156,7 +205,7 @@ export default function ProfileGallery() {
             disabled={saving}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Gallery"}
+            {saving ? "Saving..." : "Add to Gallery"}
           </button>
         </div>
       </form>

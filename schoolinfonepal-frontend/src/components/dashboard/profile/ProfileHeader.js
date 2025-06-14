@@ -7,7 +7,7 @@ import {
   fetchDistrictsDropdown,
   fetchLevelsDropdown,
   fetchTypesDropdown,
-} from "../../../utils/api"
+} from "@/utils/api"
 
 export default function ProfileHeader() {
   const [loading, setLoading] = useState(true)
@@ -57,13 +57,14 @@ export default function ProfileHeader() {
       setLevels(levelsData)
       setTypes(typesData)
 
+      // Convert IDs to strings for proper comparison in select elements
       setFormData({
         name: schoolData.name || "",
         address: schoolData.address || "",
         established_date: schoolData.established_date || "",
-        district: schoolData.district?.id || "",
-        level: schoolData.level?.id || "",
-        type: schoolData.type?.id || "",
+        district: schoolData.district?.id ? String(schoolData.district.id) : "",
+        level: schoolData.level?.id ? String(schoolData.level.id) : "",
+        type: schoolData.type?.id ? String(schoolData.type.id) : "",
         level_text: schoolData.level_text || "",
         website: schoolData.website || "",
         salient_feature: schoolData.salient_feature || "",
@@ -104,11 +105,9 @@ export default function ProfileHeader() {
     try {
       const submitData = new FormData()
 
-      // Add form fields
+      // Add all form fields, including empty ones (backend might need them)
       Object.keys(formData).forEach((key) => {
-        if (formData[key] !== "") {
-          submitData.append(key, formData[key])
-        }
+        submitData.append(key, formData[key] || "")
       })
 
       // Add files
@@ -118,9 +117,15 @@ export default function ProfileHeader() {
         }
       })
 
+      // Debug: Log what we're sending
+      console.log("Form data being sent:")
+      for (const [key, value] of submitData.entries()) {
+        console.log(`${key}: ${value}`)
+      }
+
       await updateSchoolOwnProfile(submitData)
       alert("Profile updated successfully!")
-      loadData() // Reload data
+      await loadData() // Reload data to see changes
     } catch (error) {
       console.error("Error updating profile:", error)
       alert("Error updating profile: " + error.message)
@@ -184,11 +189,16 @@ export default function ProfileHeader() {
             >
               <option value="">Select District</option>
               {districts.map((district) => (
-                <option key={district.id} value={district.id}>
+                <option key={district.id} value={String(district.id)}>
                   {district.name}
                 </option>
               ))}
             </select>
+            {formData.district && (
+              <p className="text-xs text-gray-500 mt-1">
+                Selected: {districts.find((d) => String(d.id) === formData.district)?.name}
+              </p>
+            )}
           </div>
 
           <div>
@@ -201,11 +211,16 @@ export default function ProfileHeader() {
             >
               <option value="">Select Level</option>
               {levels.map((level) => (
-                <option key={level.id} value={level.id}>
-                  {level.name}
+                <option key={level.id} value={String(level.id)}>
+                  {level.title}
                 </option>
               ))}
             </select>
+            {formData.level && (
+              <p className="text-xs text-gray-500 mt-1">
+                Selected: {levels.find((l) => String(l.id) === formData.level)?.title}
+              </p>
+            )}
           </div>
 
           <div>
@@ -218,11 +233,16 @@ export default function ProfileHeader() {
             >
               <option value="">Select Type</option>
               {types.map((type) => (
-                <option key={type.id} value={type.id}>
+                <option key={type.id} value={String(type.id)}>
                   {type.name}
                 </option>
               ))}
             </select>
+            {formData.type && (
+              <p className="text-xs text-gray-500 mt-1">
+                Selected: {types.find((t) => String(t.id) === formData.type)?.name}
+              </p>
+            )}
           </div>
 
           <div>
@@ -261,6 +281,7 @@ export default function ProfileHeader() {
                   alt="Current logo"
                   className="h-20 w-20 object-cover rounded"
                 />
+                <p className="text-xs text-gray-500">Current logo</p>
               </div>
             )}
             <input
@@ -281,6 +302,7 @@ export default function ProfileHeader() {
                   alt="Current cover"
                   className="h-32 w-full object-cover rounded"
                 />
+                <p className="text-xs text-gray-500">Current cover photo</p>
               </div>
             )}
             <input
@@ -301,6 +323,7 @@ export default function ProfileHeader() {
                   alt="Current OG image"
                   className="h-32 w-full object-cover rounded"
                 />
+                <p className="text-xs text-gray-500">Current OG image</p>
               </div>
             )}
             <input

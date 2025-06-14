@@ -8,13 +8,16 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .models import School, SchoolGallery, SchoolBrochure, SchoolMessage, SchoolEmail
+from .models import School, SchoolGallery, SchoolBrochure, SchoolMessage, SchoolEmail, SchoolPhone
 from .serializers import SchoolSerializer
 from inquiry.models import Inquiry, PreRegistrationInquiry
 from inquiry.serializers import InquirySerializer, PreRegistrationInquirySerializer
 from core.filters import SchoolFilter
 from facility.models import Facility
 from university.models import University
+from district.models import District
+from level.models import Level
+from type.models import Type
 from django.db.models import F, Value, BooleanField, ExpressionWrapper
 
 import json
@@ -253,8 +256,8 @@ def school_own_update(request):
     
     for key, value in request.data.items():
         if key not in ['logo', 'cover_photo', 'og_image']:
-            if key in ['facilities', 'universities']:
-                print(f"{key}: {request.data.getlist(key)} (getlist)")
+            if key in ['facilities', 'universities', 'district', 'level', 'type']:
+                print(f"{key}: {request.data.getlist(key) if hasattr(request.data, 'getlist') else value} (getlist)")
             print(f"{key}: {value}")
     
     if request.user.role != 'school' or not hasattr(request.user, 'school'):
@@ -264,6 +267,43 @@ def school_own_update(request):
     print(f"Updating school: {school.name} (ID: {school.id})")
     
     data = request.data.dict()
+
+    # ✅ CRITICAL FIX: Handle foreign key fields properly
+    if "district" in data and data["district"]:
+        try:
+            district_id = int(data["district"])
+            if District.objects.filter(id=district_id).exists():
+                data["district_id"] = district_id
+                print(f"Set district_id to: {district_id}")
+            else:
+                print(f"District with ID {district_id} does not exist")
+        except (ValueError, TypeError):
+            print(f"Invalid district ID: {data['district']}")
+        data.pop("district", None)  # Remove the original field
+
+    if "level" in data and data["level"]:
+        try:
+            level_id = int(data["level"])
+            if Level.objects.filter(id=level_id).exists():
+                data["level_id"] = level_id
+                print(f"Set level_id to: {level_id}")
+            else:
+                print(f"Level with ID {level_id} does not exist")
+        except (ValueError, TypeError):
+            print(f"Invalid level ID: {data['level']}")
+        data.pop("level", None)  # Remove the original field
+
+    if "type" in data and data["type"]:
+        try:
+            type_id = int(data["type"])
+            if Type.objects.filter(id=type_id).exists():
+                data["type_id"] = type_id
+                print(f"Set type_id to: {type_id}")
+            else:
+                print(f"Type with ID {type_id} does not exist")
+        except (ValueError, TypeError):
+            print(f"Invalid type ID: {data['type']}")
+        data.pop("type", None)  # Remove the original field
 
     # Handle boolean fields
     if "verification" in data:
@@ -300,6 +340,9 @@ def school_own_update(request):
             # Verify the relationships were set
             print(f"Final school facilities: {[f.name for f in school.facilities.all()]}")
             print(f"Final school universities: {[u.name for u in school.universities.all()]}")
+            print(f"Final school district: {school.district}")
+            print(f"Final school level: {school.level}")
+            print(f"Final school type: {school.type}")
 
             return Response(SchoolSerializer(school, context={'request': request}).data, status=status.HTTP_200_OK)
         
@@ -407,99 +450,113 @@ def _handle_file_uploads(school, request, is_update=False):
 
     school.save()
 
-    # ✅ CRITICAL FIX: Only handle gallery if explicitly flagged for update
+    # ✅ CRITICAL FIX: Handle gallery - only update if explicitly requested
     if request.data.get("update_gallery") == "true":
         print("Explicitly updating gallery")
-        if is_update:
-            print("Deleting existing gallery items")
-            for gallery_item in school.gallery.all():
-                safe_file_delete(gallery_item.image)
-                gallery_item.delete()
-
+        
         gallery_data = safe_json_loads(request.data.get("gallery", []))
         print(f"Gallery data: {gallery_data}")
+        
+        # Only add new items, don't delete existing ones
         for i, item in enumerate(gallery_data):
             img_key = f"gallery_{i}_image"
             if img_key in request.FILES:
-                print(f"Creating gallery item {i} with new file")
+                print(f"Creating new gallery item {i} with new file")
                 SchoolGallery.objects.create(
                     school=school,
                     image=request.FILES[img_key],
                     caption=item.get("caption", "")
                 )
-            elif item.get("image") and not item.get("image").startswith("http"):
-                print(f"Preserving existing gallery item {i}")
-                # This is an existing image path, recreate the record
-                SchoolGallery.objects.create(
-                    school=school,
-                    image=item.get("image"),
-                    caption=item.get("caption", "")
-                )
     else:
         print("Gallery update not requested")
 
-    # ✅ CRITICAL FIX: Only handle brochures if explicitly flagged for update
+    # ✅ CRITICAL FIX: Handle brochures - only update if explicitly requested
     if request.data.get("update_brochures") == "true":
         print("Explicitly updating brochures")
-        if is_update:
-            print("Deleting existing brochure items")
-            for brochure_item in school.brochures.all():
-                safe_file_delete(brochure_item.file)
-                brochure_item.delete()
-
+        
         brochures_data = safe_json_loads(request.data.get("brochures", []))
         print(f"Brochures data: {brochures_data}")
+        
+        # Only add new items, don't delete existing ones
         for i, item in enumerate(brochures_data):
             file_key = f"brochures_{i}_file"
             if file_key in request.FILES:
-                print(f"Creating brochure item {i} with new file")
+                print(f"Creating new brochure item {i} with new file")
                 SchoolBrochure.objects.create(
                     school=school,
                     file=request.FILES[file_key],
                     description=item.get("description", "")
                 )
-            elif item.get("file") and not item.get("file").startswith("http"):
-                print(f"Preserving existing brochure item {i}")
-                # This is an existing file path, recreate the record
-                SchoolBrochure.objects.create(
-                    school=school,
-                    file=item.get("file"),
-                    description=item.get("description", "")
-                )
     else:
         print("Brochures update not requested")
 
-    # ✅ CRITICAL FIX: Only handle messages if explicitly flagged for update
+    # ✅ CRITICAL FIX: Handle messages - only update if explicitly requested
     if request.data.get("update_messages") == "true":
         print("Explicitly updating messages")
-        if is_update:
-            print("Deleting existing message items")
-            for message_item in school.messages.all():
-                safe_file_delete(message_item.image)
-                message_item.delete()
-
+        
         messages_data = safe_json_loads(request.data.get("messages", []))
         print(f"Messages data: {messages_data}")
+        
+        # ✅ FIX: Get existing messages and their images
+        existing_messages = list(school.messages.all().order_by('id'))
+        existing_images = {}
+        
+        # Store existing images by their current index
+        for idx, existing_msg in enumerate(existing_messages):
+            if existing_msg.image:
+                existing_images[idx] = existing_msg.image
+                print(f"Stored existing image for message {idx}: {existing_msg.image.name}")
+        
+        # Delete all existing messages (but we'll preserve the image files)
+        school.messages.all().delete()
+        
+        # Create new messages from the data
         for i, msg in enumerate(messages_data):
             img_key = f"messages_{i}_image"
-            msg_image = request.FILES.get(img_key)
-
-            # Create message if it has content or an image
-            if any([msg.get("title"), msg.get("message"), msg.get("name"), msg.get("designation")]) or msg_image or msg.get("image"):
-                print(f"Creating message item {i}")
-                # Handle existing image
-                existing_image = None
-                if msg.get("image") and not msg.get("image").startswith("http"):
-                    existing_image = msg.get("image")
+            new_image = request.FILES.get(img_key)
+            
+            # ✅ FIX: Determine which image to use
+            final_image = None
+            
+            if new_image:
+                # New image uploaded - use it
+                final_image = new_image
+                print(f"Using new image for message {i}")
                 
-                SchoolMessage.objects.create(
+                # If there was an existing image at this position, delete it
+                if i in existing_images:
+                    safe_file_delete(existing_images[i])
+                    print(f"Deleted old image for message {i}")
+                    
+            elif i < len(existing_images) and i in existing_images:
+                # No new image, but there's an existing image - preserve it
+                final_image = existing_images[i]
+                print(f"Preserving existing image for message {i}")
+            
+            # Create message if it has content or an image
+            if any([msg.get("title"), msg.get("message"), msg.get("name"), msg.get("designation")]) or final_image:
+                print(f"Creating message item {i} with image: {bool(final_image)}")
+                
+                new_message = SchoolMessage.objects.create(
                     school=school,
                     title=msg.get("title", ""),
                     message=msg.get("message", ""),
                     name=msg.get("name", ""),
-                    designation=msg.get("designation", ""),
-                    image=msg_image or existing_image
+                    designation=msg.get("designation", "")
                 )
+                
+                # Set the image after creation to handle existing files properly
+                if final_image:
+                    new_message.image = final_image
+                    new_message.save()
+        
+        # Clean up any unused existing images
+        used_indices = set(range(len(messages_data)))
+        for idx, img in existing_images.items():
+            if idx not in used_indices:
+                safe_file_delete(img)
+                print(f"Cleaned up unused image at index {idx}")
+                
     else:
         print("Messages update not requested")
     

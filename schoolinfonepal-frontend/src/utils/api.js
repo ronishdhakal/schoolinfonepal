@@ -391,9 +391,8 @@ export const deleteSchool = async (slug) => {
   return text ? JSON.parse(text) : {}
 }
 
-
 // ========================
-// 🏫 School Dashboard APIs
+// 🏫 School Dashboard APIs - FIXED
 // ========================
 
 export const fetchSchoolOwnProfile = async () => {
@@ -412,8 +411,25 @@ export const fetchSchoolOwnProfile = async () => {
   return res.json()
 }
 
-export const updateSchoolOwnProfile = async (formData) => {
+// ✅ FIXED: Updated to properly handle specific section updates
+export const updateSchoolOwnProfile = async (formData, options = {}) => {
   const headers = getTokenHeaders()
+
+  // ✅ CRITICAL FIX: Only add update flags for sections that are actually being updated
+  const { updateGallery = false, updateMessages = false, updateBrochures = false } = options
+
+  if (updateGallery) {
+    formData.append("update_gallery", "true")
+  }
+
+  if (updateMessages) {
+    formData.append("update_messages", "true")
+  }
+
+  if (updateBrochures) {
+    formData.append("update_brochures", "true")
+  }
+
   const res = await fetch(`${API_BASE_URL}/schools/me/update/`, {
     method: "PATCH",
     headers,
@@ -718,7 +734,6 @@ export const updateAdvertisement = async (id, formData) => {
   return res.json()
 }
 
-
 export const deleteAdvertisement = async (id) => {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
   const getAuthHeaders = () => {
@@ -740,7 +755,6 @@ export const deleteAdvertisement = async (id) => {
   return text ? JSON.parse(text) : { message: "Deleted successfully" }
 }
 
-
 export const fetchAdsByPlacements = async (placements = []) => {
   // Usage: fetchAdsByPlacements(['home-1', 'home-2'])
   const url = new URL(`${API_BASE_URL}/ads/`)
@@ -748,11 +762,6 @@ export const fetchAdsByPlacements = async (placements = []) => {
   const res = await fetch(url)
   return res.json()
 }
-
-
-
-
-
 
 // ========================
 // 📚 Discipline APIs
