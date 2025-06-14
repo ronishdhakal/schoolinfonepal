@@ -1,7 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { fetchSchoolOwnProfile, updateSchoolOwnProfile, fetchCoursesDropdown } from "../../../utils/api"
+import Select from "react-select"
+import {
+  fetchSchoolOwnProfile,
+  updateSchoolOwnProfile,
+  fetchCoursesDropdown,
+} from "../../../utils/api"
 
 export default function ProfileCourses() {
   const [loading, setLoading] = useState(true)
@@ -15,13 +20,12 @@ export default function ProfileCourses() {
 
   const loadData = async () => {
     try {
-      const [schoolData, coursesData] = await Promise.all([fetchSchoolOwnProfile(), fetchCoursesDropdown()])
+      const [schoolData, coursesData] = await Promise.all([
+        fetchSchoolOwnProfile(),
+        fetchCoursesDropdown(),
+      ])
 
       setCourses(coursesData)
-
-      // ✅ FIXED: Process school_courses from school_courses_display field
-      console.log("School data received:", schoolData)
-      console.log("School courses display:", schoolData.school_courses_display)
 
       const processedSchoolCourses = (schoolData.school_courses_display || []).map((sc) => ({
         course_id: sc.course?.id || sc.course_id,
@@ -30,7 +34,6 @@ export default function ProfileCourses() {
         admin_open: sc.admin_open !== false,
       }))
 
-      console.log("Processed school courses:", processedSchoolCourses)
       setSchoolCourses(processedSchoolCourses)
     } catch (error) {
       console.error("Error loading courses:", error)
@@ -40,7 +43,10 @@ export default function ProfileCourses() {
   }
 
   const addCourse = () => {
-    setSchoolCourses([...schoolCourses, { course_id: "", fee: "", status: "Open", admin_open: true }])
+    setSchoolCourses([
+      ...schoolCourses,
+      { course_id: "", fee: "", status: "Open", admin_open: true },
+    ])
   }
 
   const removeCourse = (index) => {
@@ -48,7 +54,9 @@ export default function ProfileCourses() {
   }
 
   const updateCourse = (index, field, value) => {
-    const updated = schoolCourses.map((course, i) => (i === index ? { ...course, [field]: value } : course))
+    const updated = schoolCourses.map((course, i) =>
+      i === index ? { ...course, [field]: value } : course
+    )
     setSchoolCourses(updated)
   }
 
@@ -59,23 +67,19 @@ export default function ProfileCourses() {
     try {
       const formData = new FormData()
 
-      // ✅ FIXED: Filter out courses without course_id selection and ensure proper format
       const validCourses = schoolCourses
         .filter((sc) => sc.course_id)
         .map((sc) => ({
           course_id: Number.parseInt(sc.course_id),
-          fee: sc.fee || "", // ✅ Allow empty fees
+          fee: sc.fee || "",
           status: sc.status || "Open",
           admin_open: sc.admin_open !== false,
         }))
 
-      console.log("Submitting school courses:", validCourses)
       formData.append("school_courses", JSON.stringify(validCourses))
 
       await updateSchoolOwnProfile(formData)
       alert("Courses updated successfully!")
-
-      // ✅ FIXED: Reload data to show updated courses
       await loadData()
     } catch (error) {
       console.error("Error updating courses:", error)
@@ -85,14 +89,17 @@ export default function ProfileCourses() {
     }
   }
 
-  const getCourseName = (courseId) => {
-    const course = courses.find((c) => c.id === Number.parseInt(courseId))
-    return course ? course.name : ""
+  const courseOptions = courses.map((course) => ({
+    value: course.id,
+    label: course.name,
+  }))
+
+  const getCourseLabel = (id) => {
+    const found = courseOptions.find((c) => c.value === Number(id))
+    return found ? found.label : ""
   }
 
-  if (loading) {
-    return <div className="animate-pulse">Loading courses...</div>
-  }
+  if (loading) return <div className="animate-pulse">Loading courses...</div>
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -111,25 +118,25 @@ export default function ProfileCourses() {
         {schoolCourses.map((schoolCourse, index) => (
           <div key={index} className="border rounded-lg p-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Course Select */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                <select
-                  value={schoolCourse.course_id || ""}
-                  onChange={(e) => updateCourse(index, "course_id", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Course</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  options={courseOptions}
+                  value={courseOptions.find((c) => c.value === Number(schoolCourse.course_id)) || null}
+                  onChange={(selected) =>
+                    updateCourse(index, "course_id", selected ? selected.value : "")
+                  }
+                  placeholder="Select course"
+                />
                 {schoolCourse.course_id && (
-                  <p className="text-xs text-gray-500 mt-1">Selected: {getCourseName(schoolCourse.course_id)}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selected: {getCourseLabel(schoolCourse.course_id)}
+                  </p>
                 )}
               </div>
 
+              {/* Fee Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fee (Optional)</label>
                 <input
@@ -142,6 +149,7 @@ export default function ProfileCourses() {
                 />
               </div>
 
+              {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
@@ -157,22 +165,24 @@ export default function ProfileCourses() {
                 </select>
               </div>
 
-              <div className="flex items-end justify-between">
+              {/* Toggle + Remove */}
+              <div className="flex flex-col justify-between">
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
                     checked={schoolCourse.admin_open !== false}
-                    onChange={(e) => updateCourse(index, "admin_open", e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    onChange={(e) =>
+                      updateCourse(index, "admin_open", e.target.checked)
+                    }
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700">Active</span>
                 </label>
-
                 {schoolCourses.length > 0 && (
                   <button
                     type="button"
                     onClick={() => removeCourse(index)}
-                    className="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700"
+                    className="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700 mt-2"
                   >
                     Remove
                   </button>
@@ -184,7 +194,9 @@ export default function ProfileCourses() {
       </div>
 
       {schoolCourses.length === 0 && (
-        <div className="text-center py-8 text-gray-500">No courses added yet. Click "Add Course" to get started.</div>
+        <div className="text-center py-8 text-gray-500">
+          No courses added yet. Click "Add Course" to get started.
+        </div>
       )}
 
       <div className="flex justify-end">

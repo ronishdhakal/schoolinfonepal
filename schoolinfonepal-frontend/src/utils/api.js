@@ -217,7 +217,7 @@ export const deleteAdmission = async (slug) => {
 }
 
 // ========================
-// 📧 Inquiry APIs (Admin)
+// 📧 Inquiry APIs (Admin) - UPDATED
 // ========================
 
 export const fetchAdminInquiries = async (params = {}) => {
@@ -283,36 +283,7 @@ export const fetchInquiryAnalytics = async (params = {}) => {
   return res.json()
 }
 
-export const exportInquiriesCSV = async (params = {}) => {
-  const url = new URL(`${API_BASE_URL}/inquiries/admin/export/`)
-  Object.keys(params).forEach((key) => {
-    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
-      url.searchParams.append(key, params[key])
-    }
-  })
-
-  const headers = getTokenHeaders()
-  const res = await fetch(url, { headers })
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      logout()
-      throw new Error("Unauthorized")
-    }
-    throw new Error("Failed to export data")
-  }
-
-  // Handle file download
-  const blob = await res.blob()
-  const downloadUrl = window.URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = downloadUrl
-  link.download = `inquiries_export_${new Date().toISOString().split("T")[0]}.csv`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.URL.revokeObjectURL(downloadUrl)
-}
+// ✅ REMOVED: exportInquiriesCSV function - no longer needed
 
 // ========================
 // 🏫 School APIs
@@ -512,36 +483,7 @@ export const fetchSchoolInquiriesAnalytics = async () => {
   return res.json()
 }
 
-export const exportSchoolInquiriesExcel = async (params = {}) => {
-  const url = new URL(`${API_BASE_URL}/schools/me/inquiries/export/`)
-  Object.keys(params).forEach((key) => {
-    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
-      url.searchParams.append(key, params[key])
-    }
-  })
-
-  const headers = getTokenHeaders()
-  const res = await fetch(url, { headers })
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      logout()
-      throw new Error("Unauthorized")
-    }
-    throw new Error("Failed to export data")
-  }
-
-  // Handle file download
-  const blob = await res.blob()
-  const downloadUrl = window.URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = downloadUrl
-  link.download = `school_inquiries_export_${new Date().toISOString().split("T")[0]}.xlsx`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.URL.revokeObjectURL(downloadUrl)
-}
+// ✅ REMOVED: exportSchoolInquiriesExcel function - no longer needed
 
 // ========================
 // 📚 Course APIs
@@ -734,23 +676,23 @@ export const updateAdvertisement = async (id, formData) => {
   return res.json()
 }
 
+// ✅ FIXED: Advertisement delete function
 export const deleteAdvertisement = async (id) => {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token")
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }
-  const headers = getAuthHeaders()
+  const headers = getTokenHeaders()
   const res = await fetch(`${API_BASE_URL}/ads/${id}/delete/`, {
     method: "DELETE",
     headers,
   })
 
   if (!res.ok) {
+    if (res.status === 401) {
+      logout()
+      throw new Error("Unauthorized")
+    }
     throw new Error("Delete failed")
   }
 
-  // ✅ FIXED: Handle empty response from DELETE
+  // Handle empty response from DELETE
   const text = await res.text()
   return text ? JSON.parse(text) : { message: "Deleted successfully" }
 }

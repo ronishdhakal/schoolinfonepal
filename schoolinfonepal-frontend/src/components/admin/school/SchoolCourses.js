@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import Select from "react-select"
 import { fetchCoursesDropdown } from "@/utils/api"
 
 const SchoolCourses = ({ formData, setFormData }) => {
@@ -16,6 +17,11 @@ const SchoolCourses = ({ formData, setFormData }) => {
     }
     loadCourses()
   }, [])
+
+  const courseOptions = courses.map((course) => ({
+    value: course.id,
+    label: course.name,
+  }))
 
   const handleCourseChange = (index, field, value) => {
     const schoolCourses = [...(formData.school_courses || [])]
@@ -63,18 +69,16 @@ const SchoolCourses = ({ formData, setFormData }) => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
-                    <select
-                      value={schoolCourse.course_id || ""}
-                      onChange={(e) => handleCourseChange(index, "course_id", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="">Select Course</option>
-                      {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.name}
-                        </option>
-                      ))}
-                    </select>
+                    <Select
+                      options={courseOptions}
+                      value={courseOptions.find((option) => option.value === Number(schoolCourse.course_id))}
+                      onChange={(selected) =>
+                        handleCourseChange(index, "course_id", selected ? selected.value : "")
+                      }
+                      isClearable
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                    />
                   </div>
 
                   <div>

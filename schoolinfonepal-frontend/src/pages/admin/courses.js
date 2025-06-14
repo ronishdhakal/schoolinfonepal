@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react"
 import AdminLayout from "@/components/admin/AdminLayout"
 import CourseForm from "@/components/admin/course/CourseForm"
+import Pagination from "@/components/common/Pagination"
 import { fetchCourses, deleteCourse } from "@/utils/api"
 import { useRouter } from "next/router"
+
+const PAGE_SIZE = 12
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState([])
@@ -11,19 +14,21 @@ export default function AdminCoursesPage() {
   const [showForm, setShowForm] = useState(false)
   const [refresh, setRefresh] = useState(false)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const router = useRouter()
 
   useEffect(() => {
     const loadCourses = async () => {
       try {
-        const data = await fetchCourses()
-        // 💡 Make sure courses is always an array!
+        const data = await fetchCourses({ page: currentPage, page_size: PAGE_SIZE })
         let arr = []
         if (Array.isArray(data)) {
           arr = data
         } else if (Array.isArray(data?.results)) {
           arr = data.results
+          setTotal(data.count || 0)
         }
         setCourses(arr)
         setError(null)
@@ -34,7 +39,7 @@ export default function AdminCoursesPage() {
       }
     }
     loadCourses()
-  }, [refresh])
+  }, [refresh, currentPage])
 
   const handleEdit = (slug) => {
     setSelectedSlug(slug)
@@ -63,6 +68,10 @@ export default function AdminCoursesPage() {
     }
   }
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -81,66 +90,74 @@ export default function AdminCoursesPage() {
         )}
 
         {!showForm && (
-          <div className="bg-white shadow-lg rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Course Name</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">University</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Level</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Duration</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {Array.isArray(courses) && courses.length > 0 ? (
-                    courses.map((course) => (
-                      <tr key={course.slug} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                          <div>
-                            <div className="font-semibold">{course.name}</div>
-                            {course.abbreviation && (
-                              <div className="text-gray-500 text-xs">({course.abbreviation})</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {course.university?.name || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {course.level?.name || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {course.duration || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-center space-x-4">
-                          <button
-                            className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
-                            onClick={() => handleEdit(course.slug)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
-                            onClick={() => handleDelete(course.slug)}
-                          >
-                            Delete
-                          </button>
+          <>
+            <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Course Name</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">University</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Level</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Duration</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {Array.isArray(courses) && courses.length > 0 ? (
+                      courses.map((course) => (
+                        <tr key={course.slug} className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                            <div>
+                              <div className="font-semibold">{course.name}</div>
+                              {course.abbreviation && (
+                                <div className="text-gray-500 text-xs">({course.abbreviation})</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                            {course.university?.name || "-"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                            {course.level?.name || "-"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-center">
+                            {course.duration || "-"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center space-x-4">
+                            <button
+                              className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
+                              onClick={() => handleEdit(course.slug)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
+                              onClick={() => handleDelete(course.slug)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center py-8 text-gray-500 text-sm">
+                          No courses found.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="text-center py-8 text-gray-500 text-sm">
-                        No courses found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+            <Pagination
+              current={currentPage}
+              total={total}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          </>
         )}
 
         {showForm && (

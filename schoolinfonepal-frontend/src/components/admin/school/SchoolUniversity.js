@@ -1,5 +1,7 @@
 "use client"
+
 import { useState, useEffect } from "react"
+import Select from "react-select"
 import { fetchUniversitiesDropdown } from "@/utils/api"
 
 const SchoolUniversity = ({ formData, setFormData }) => {
@@ -17,61 +19,46 @@ const SchoolUniversity = ({ formData, setFormData }) => {
     loadUniversities()
   }, [])
 
-  const handleUniversityChange = (universityId) => {
-    const currentUniversities = formData.universities || []
-    const updatedUniversities = currentUniversities.includes(universityId)
-      ? currentUniversities.filter((id) => id !== universityId)
-      : [...currentUniversities, universityId]
+  const options = universities.map((u) => ({ value: u.id, label: u.name }))
+  const selectedOptions = options.filter((opt) => (formData.universities || []).includes(opt.value))
 
-    setFormData((prev) => ({ ...prev, universities: updatedUniversities }))
+  const handleChange = (selected) => {
+    const ids = selected.map((opt) => opt.value)
+    setFormData((prev) => ({ ...prev, universities: ids }))
   }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <h3 className="text-xl font-semibold text-gray-900 mb-6">Affiliated Universities</h3>
+      <h3 className="text-xl font-semibold text-gray-900 mb-4">Affiliated Universities</h3>
+      <p className="text-sm text-gray-600 mb-2">Select universities that the school is affiliated with</p>
 
-      <div className="space-y-4">
-        <p className="text-sm text-gray-600">Select universities that the school is affiliated with</p>
+      <Select
+        options={options}
+        value={selectedOptions}
+        onChange={handleChange}
+        isMulti
+        placeholder="Select universities"
+        className="react-select-container"
+        classNamePrefix="react-select"
+      />
 
-        {universities.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-4">
-            {universities.map((university) => (
-              <label key={university.id} className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={(formData.universities || []).includes(university.id)}
-                  onChange={() => handleUniversityChange(university.id)}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm text-gray-700">{university.name}</span>
-              </label>
+      {selectedOptions.length > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            Selected Universities ({selectedOptions.length}):
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {selectedOptions.map((opt) => (
+              <span
+                key={opt.value}
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+              >
+                {opt.label}
+              </span>
             ))}
           </div>
-        ) : (
-          <p className="text-gray-500 text-sm">Loading universities...</p>
-        )}
-
-        {formData.universities && formData.universities.length > 0 && (
-          <div className="mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              Selected Universities ({formData.universities.length}):
-            </p>
-            <div className="space-y-1">
-              {formData.universities.map((universityId) => {
-                const university = universities.find((u) => u.id === universityId)
-                return university ? (
-                  <span
-                    key={universityId}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-2 mb-1"
-                  >
-                    {university.name}
-                  </span>
-                ) : null
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

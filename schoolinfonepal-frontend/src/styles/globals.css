@@ -89,3 +89,14 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #0d8ce8;
 }
+
+
+.react-select__control {
+  @apply border-gray-300 shadow-sm;
+}
+.react-select__control--is-focused {
+  @apply ring-2 ring-blue-500 border-blue-500;
+}
+.react-select__menu {
+  @apply z-50;
+}

@@ -1,223 +1,247 @@
+// pages/admin/information/index.jsx
 "use client"
 
 import { useState, useEffect } from "react"
-import AdminLayout from "@/components/admin/AdminLayout"
-import ScholarshipForm from "@/components/admin/scholarship/ScholarshipForm"
+import { useRouter } from "next/router"
 import {
-  fetchScholarships,
-  deleteScholarship,
-  fetchSchoolsDropdown,
-  fetchUniversitiesDropdown,
-  fetchCoursesDropdown,
-  fetchLevelsDropdown,
+  fetchInformation,
+  fetchInformationBySlug,
+  deleteInformation,
 } from "@/utils/api"
-import { Plus } from "lucide-react"
+import InformationForm from "@/components/admin/information/InformationForm"
+import InformationHeader from "@/components/admin/information/InformationHeader"
+import AdminLayout from "@/components/admin/AdminLayout"
+import Pagination from "@/components/common/Pagination"
 
-export default function ScholarshipsAdmin() {
-  const [scholarships, setScholarships] = useState([])
-  const [dropdowns, setDropdowns] = useState({
-    schools: [],
-    universities: [],
-    courses: [],
-    levels: [],
-  })
+export default function InformationAdmin() {
+  const router = useRouter()
+  const { action, slug } = router.query
+
+  const [information, setInformation] = useState([])
+  const [selectedInformation, setSelectedInformation] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [editingScholarship, setEditingScholarship] = useState(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
+  const [pagination, setPagination] = useState({ page: 1, count: 0 })
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadInformation = async () => {
     try {
       setLoading(true)
-      const [scholarshipsData, schoolsData, universitiesData, coursesData, levelsData] = await Promise.all([
-        fetchScholarships(),
-        fetchSchoolsDropdown(),
-        fetchUniversitiesDropdown(),
-        fetchCoursesDropdown(),
-        fetchLevelsDropdown(),
-      ])
-
-      setScholarships(scholarshipsData?.results || scholarshipsData || [])
-      setDropdowns({
-        schools: schoolsData || [],
-        universities: universitiesData || [],
-        courses: coursesData || [],
-        levels: levelsData || [],
-      })
+      const data = await fetchInformation({ page: pagination.page })
+      setInformation(data.results || [])
+      setPagination((prev) => ({ ...prev, count: data.count || 0 }))
+      setError(null)
     } catch (err) {
-      setError("Failed to load scholarships")
-      console.error(err)
+      console.error("Error loading information:", err)
+      setError("Failed to load information. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
+  const loadInformationItem = async (infoSlug) => {
+    try {
+      const data = await fetchInformationBySlug(infoSlug)
+      setSelectedInformation(data)
+    } catch (err) {
+      console.error("Error loading information:", err)
+      setError(err.message)
+    }
+  }
+
+  useEffect(() => {
+    loadInformation()
+  }, [pagination.page])
+
+  useEffect(() => {
+    if (slug && (action === "edit" || action === "view")) {
+      loadInformationItem(slug)
+    } else {
+      setSelectedInformation(null)
+    }
+  }, [slug, action])
+
   const handleCreate = () => {
-    setEditingScholarship(null)
-    setShowForm(true)
+    router.push("/admin/information?action=create")
   }
 
-  const handleEdit = (scholarship) => {
-    setEditingScholarship(scholarship)
-    setShowForm(true)
+  const handleEdit = (info) => {
+    router.push(`/admin/information?action=edit&slug=${info.slug}`)
   }
 
-  const handleDelete = async (slug) => {
-    if (window.confirm("Are you sure you want to delete this scholarship?")) {
-      try {
-        await deleteScholarship(slug)
-        await loadData()
-      } catch (err) {
-        setError("Failed to delete scholarship")
+  const handleView = (info) => {
+    router.push(`/admin/information?action=view&slug=${info.slug}`)
+  }
+
+  const handleDelete = async (info) => {
+    if (!confirm("Are you sure you want to delete this information?")) return
+
+    try {
+      await deleteInformation(info.slug)
+      await loadInformation()
+      if (selectedInformation?.slug === info.slug) {
+        router.push("/admin/information")
       }
+    } catch (err) {
+      console.error("Error deleting information:", err)
+      alert("Failed to delete information: " + err.message)
     }
   }
 
   const handleFormSuccess = async () => {
-    setShowForm(false)
-    setEditingScholarship(null)
-    await loadData()
+    await loadInformation()
+    router.push("/admin/information")
   }
 
-  const handleFormCancel = () => {
-    setShowForm(false)
-    setEditingScholarship(null)
+  const handleCancel = () => {
+    router.push("/admin/information")
   }
 
-  const isActive = (scholarship) => {
-    const now = new Date()
-    const activeFrom = new Date(scholarship.active_from)
-    const activeUntil = new Date(scholarship.active_until)
-    return now >= activeFrom && now <= activeUntil
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "/default-placeholder.png"
+    if (imagePath.startsWith("http")) return imagePath
+    return `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://127.0.0.1:8000"}${imagePath}`
   }
 
-  const filteredScholarships = scholarships.filter((scholarship) => {
-    const matchesSearch =
-      scholarship.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scholarship.organizer_custom?.toLowerCase().includes(searchTerm.toLowerCase())
+  if (action === "create" || action === "edit") {
+    return (
+      <AdminLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <InformationForm
+            information={action === "edit" ? selectedInformation : null}
+            onSuccess={handleFormSuccess}
+            onCancel={handleCancel}
+          />
+        </div>
+      </AdminLayout>
+    )
+  }
 
-    const matchesFilter =
-      filterStatus === "all" ||
-      (filterStatus === "active" && isActive(scholarship)) ||
-      (filterStatus === "inactive" && !isActive(scholarship)) ||
-      (filterStatus === "featured" && scholarship.featured)
-
-    return matchesSearch && matchesFilter
-  })
+  if (action === "view" && selectedInformation) {
+    return (
+      <AdminLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <InformationHeader
+            information={selectedInformation}
+            onEdit={() => handleEdit(selectedInformation)}
+            onDelete={() => handleDelete(selectedInformation)}
+          />
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Manage Scholarships</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Information</h1>
           <button
-            className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium shadow-sm"
             onClick={handleCreate}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
-            <Plus className="w-4 h-4 mr-2 inline" />
-            Add Scholarship
+            Create Information
           </button>
         </div>
 
-        {/* Error Display */}
-        {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-8 border border-red-200">{error}</div>}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded">{error}</div>
+        )}
 
-        {/* Form Display */}
-        {showForm ? (
-          <div className="bg-white shadow-lg rounded-xl p-8 mt-8 border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">
-                {editingScholarship ? "Edit Scholarship" : "Add New Scholarship"}
-              </h2>
-              <button
-                onClick={handleFormCancel}
-                className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
-              >
-                Cancel
-              </button>
-            </div>
-            <ScholarshipForm
-              scholarship={editingScholarship}
-              onSuccess={handleFormSuccess}
-              onCancel={handleFormCancel}
-              schools={dropdowns.schools}
-              universities={dropdowns.universities}
-              courses={dropdowns.courses}
-              levels={dropdowns.levels}
-            />
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p className="mt-2 text-gray-600">Loading information...</p>
           </div>
         ) : (
-          /* Scholarships Table */
-          <div className="bg-white shadow-lg rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+          <>
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Scholarship Title</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Organizer</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Featured</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Information</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Published Date</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {loading ? (
-                    <tr>
-                      <td colSpan="5" className="text-center py-8 text-gray-500 text-sm">
-                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <p className="mt-2">Loading scholarships...</p>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {information.map((info) => (
+                    <tr key={info.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-12 w-12">
+                            <img
+                              className="h-12 w-12 object-cover rounded"
+                              src={getImageUrl(info.featured_image)}
+                              alt={info.title}
+                              onError={(e) => {
+                                e.target.src = "/default-placeholder.png"
+                              }}
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{info.title}</div>
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {info.top_description?.substring(0, 50)}...
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {new Date(info.published_date).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                          {info.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded ${
+                            info.featured
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {info.featured ? "Featured" : "Regular"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleView(info)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleEdit(info)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(info)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
-                  ) : filteredScholarships.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="text-center py-8 text-gray-500 text-sm">
-                        No scholarships found.{" "}
-                        {searchTerm || filterStatus !== "all"
-                          ? "Try adjusting your search or filters."
-                          : "Get started by creating a new scholarship."}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredScholarships.map((scholarship) => (
-                      <tr key={scholarship.id} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">{scholarship.title}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {scholarship.organizer_custom || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {isActive(scholarship) ? "Active" : "Inactive"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                          {scholarship.featured ? "Yes" : "No"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-center space-x-4">
-                          <button
-                            className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150"
-                            onClick={() => handleEdit(scholarship)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-800 font-medium transition-colors duration-150"
-                            onClick={() => handleDelete(scholarship.slug)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
-          </div>
+
+            <Pagination
+              page={pagination.page}
+              total={pagination.count}
+              pageSize={12}
+              onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+            />
+          </>
         )}
       </div>
     </AdminLayout>

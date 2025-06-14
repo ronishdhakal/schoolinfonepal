@@ -8,6 +8,7 @@ from django.utils.text import slugify
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 import json
+from rest_framework.request import Request
 
 from .models import University, UniversityGallery
 from .serializers import UniversitySerializer
@@ -98,7 +99,8 @@ def university_create(request):
     data["emails"] = safe_json_loads(request.data.get("emails", []))
     data["gallery"] = safe_json_loads(request.data.get("gallery", []))
 
-    serializer = UniversitySerializer(data=data, context={'request': request})
+    serializer = UniversitySerializer(data=data, context={'request': Request(request, data=data)})
+
     if serializer.is_valid():
         university = serializer.save()
         

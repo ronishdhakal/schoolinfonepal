@@ -5,6 +5,7 @@ import { useRouter } from "next/router"
 import { fetchAdmissions, fetchAdmissionBySlug, deleteAdmission } from "@/utils/api"
 import AdmissionForm from "@/components/admin/admission/AdmissionForm"
 import AdminLayout from "@/components/admin/AdminLayout"
+import Pagination from "@/components/common/Pagination"
 
 export default function AdmissionsAdmin() {
   const router = useRouter()
@@ -14,13 +15,16 @@ export default function AdmissionsAdmin() {
   const [selectedAdmission, setSelectedAdmission] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalAdmissions, setTotalAdmissions] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
 
-  // Load admissions list
   const loadAdmissions = async () => {
     try {
       setLoading(true)
-      const data = await fetchAdmissions()
+      const data = await fetchAdmissions({ page: currentPage, page_size: pageSize })
       setAdmissions(Array.isArray(data) ? data : data.results || [])
+      setTotalAdmissions(data.count || data.length || 0)
       setError(null)
     } catch (err) {
       console.error("Error loading admissions:", err)
@@ -30,7 +34,6 @@ export default function AdmissionsAdmin() {
     }
   }
 
-  // Load specific admission for edit/view
   const loadAdmission = async (admissionSlug) => {
     try {
       const data = await fetchAdmissionBySlug(admissionSlug)
@@ -43,7 +46,7 @@ export default function AdmissionsAdmin() {
 
   useEffect(() => {
     loadAdmissions()
-  }, [])
+  }, [currentPage])
 
   useEffect(() => {
     if (slug && (action === "edit" || action === "view")) {
@@ -107,7 +110,6 @@ export default function AdmissionsAdmin() {
     }
   }
 
-  // Show form for create/edit
   if (action === "create" || action === "edit") {
     return (
       <AdminLayout>
@@ -122,7 +124,6 @@ export default function AdmissionsAdmin() {
     )
   }
 
-  // Show detail view
   if (action === "view" && selectedAdmission) {
     return (
       <AdminLayout>
@@ -153,36 +154,19 @@ export default function AdmissionsAdmin() {
               <div>
                 <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
                 <div className="space-y-2">
-                  <p>
-                    <strong>Published Date:</strong> {formatDate(selectedAdmission.published_date)}
-                  </p>
-                  <p>
-                    <strong>Active From:</strong> {formatDate(selectedAdmission.active_from)}
-                  </p>
-                  <p>
-                    <strong>Active Until:</strong> {formatDate(selectedAdmission.active_until)}
-                  </p>
-                  <p>
-                    <strong>School:</strong> {selectedAdmission.school?.name || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> {getStatusBadge(selectedAdmission)}
-                  </p>
+                  <p><strong>Published Date:</strong> {formatDate(selectedAdmission.published_date)}</p>
+                  <p><strong>Active From:</strong> {formatDate(selectedAdmission.active_from)}</p>
+                  <p><strong>Active Until:</strong> {formatDate(selectedAdmission.active_until)}</p>
+                  <p><strong>School:</strong> {selectedAdmission.school?.name || "N/A"}</p>
+                  <p><strong>Status:</strong> {getStatusBadge(selectedAdmission)}</p>
                 </div>
               </div>
-
               <div>
                 <h3 className="text-lg font-semibold mb-3">Additional Details</h3>
                 <div className="space-y-2">
-                  <p>
-                    <strong>Level:</strong> {selectedAdmission.level?.name || "N/A"}
-                  </p>
-                  <p>
-                    <strong>University:</strong> {selectedAdmission.university?.name || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Featured:</strong> {selectedAdmission.featured ? "Yes" : "No"}
-                  </p>
+                  <p><strong>Level:</strong> {selectedAdmission.level?.name || "N/A"}</p>
+                  <p><strong>University:</strong> {selectedAdmission.university?.name || "N/A"}</p>
+                  <p><strong>Featured:</strong> {selectedAdmission.featured ? "Yes" : "No"}</p>
                 </div>
               </div>
 
@@ -214,7 +198,6 @@ export default function AdmissionsAdmin() {
     )
   }
 
-  // Show list view
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -237,21 +220,11 @@ export default function AdmissionsAdmin() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    Admission
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    School
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    Active Period
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Admission</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">School</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Active Period</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -278,15 +251,9 @@ export default function AdmissionsAdmin() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(admission)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleView(admission)} className="text-blue-600 hover:text-blue-900 mr-4">
-                        View
-                      </button>
-                      <button onClick={() => handleEdit(admission)} className="text-blue-600 hover:text-blue-900 mr-4">
-                        Edit
-                      </button>
-                      <button onClick={() => handleDelete(admission)} className="text-red-600 hover:text-red-900">
-                        Delete
-                      </button>
+                      <button onClick={() => handleView(admission)} className="text-blue-600 hover:text-blue-900 mr-4">View</button>
+                      <button onClick={() => handleEdit(admission)} className="text-blue-600 hover:text-blue-900 mr-4">Edit</button>
+                      <button onClick={() => handleDelete(admission)} className="text-red-600 hover:text-red-900">Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -304,6 +271,13 @@ export default function AdmissionsAdmin() {
                 </button>
               </div>
             )}
+
+            <Pagination
+              total={totalAdmissions}
+              currentPage={currentPage}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>
